@@ -302,7 +302,7 @@ export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
 
 export async function uploadWorkshopLogo(workshopId: string, file: File): Promise<string> {
   const { Buffer } = await import("node:buffer");
-  const BUCKET = process.env.Criccheto_ATTACHMENTS_BUCKET || "attachments";
+  const BUCKET = process.env.Criccheto_BRANDING_BUCKET || "workshop-branding";
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const storagePath = `${workshopId}/logo/logo-${Date.now()}.${ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());

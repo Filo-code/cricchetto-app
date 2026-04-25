@@ -1,7 +1,6 @@
 "use client";
 
 import { ImageIcon } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { uploadWorkshopLogoAction, type DashboardActionState } from "../../lib/dashboard/actions";
@@ -28,7 +27,8 @@ export function WorkshopLogoForm({ logoUrl }: { logoUrl: string | null }) {
       {logoUrl ? (
         <div className="mb-5 flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
-            <Image src={logoUrl} alt="Logo officina" width={56} height={56} className="h-full w-full object-contain" unoptimized />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="Logo officina" className="h-full w-full object-contain" />
           </div>
           <div>
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Logo attuale</p>
