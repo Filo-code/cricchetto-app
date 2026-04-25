@@ -4,22 +4,23 @@
 
 :root {
   color-scheme: dark;
-  --bg-base: #07080a;
-  --bg-lift: #0b0d11;
-  --bg-sunk: #05060a;
-  --surface-1: rgba(18, 21, 27, 0.82);
-  --surface-2: rgba(22, 26, 33, 0.72);
-  --surface-3: rgba(28, 33, 41, 0.55);
-  --line-soft: rgba(255, 255, 255, 0.07);
-  --line: rgba(255, 255, 255, 0.10);
-  --line-strong: rgba(255, 255, 255, 0.16);
+  /* ── Filò-inspired near-black base ── */
+  --bg-base: #030303;
+  --bg-lift: #060608;
+  --bg-sunk: #020202;
+  --surface-1: rgba(7, 9, 12, 0.94);
+  --surface-2: rgba(9, 11, 16, 0.84);
+  --surface-3: rgba(12, 15, 21, 0.68);
+  --line-soft: rgba(255, 255, 255, 0.04);
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.12);
   --accent: #d6b36a;
-  --accent-soft: rgba(214, 179, 106, 0.14);
-  --accent-glow: rgba(214, 179, 106, 0.35);
+  --accent-soft: rgba(214, 179, 106, 0.12);
+  --accent-glow: rgba(214, 179, 106, 0.28);
   --text-primary: #f5f3ee;
   --text-secondary: #c4c0b5;
-  --text-muted: #9aa4b2;
-  --text-faint: #6b7280;
+  --text-muted: #8a96a4;
+  --text-faint: #5a6370;
   background: var(--bg-base);
 }
 
@@ -46,11 +47,10 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "cv11", "ss01", "ss03";
   letter-spacing: -0.005em;
+  /* Single restrained gold warmth — automotive identity without dominating */
   background:
-    radial-gradient(circle at 8% -4%, rgba(214, 179, 106, 0.14), transparent 38rem),
-    radial-gradient(circle at 96% 6%, rgba(126, 170, 209, 0.08), transparent 42rem),
-    radial-gradient(circle at 50% 110%, rgba(214, 179, 106, 0.06), transparent 48rem),
-    linear-gradient(160deg, #06070a 0%, #0b0e13 52%, #06070a 100%);
+    radial-gradient(circle at 10% -2%, rgba(214, 179, 106, 0.07), transparent 40rem),
+    linear-gradient(160deg, #020203 0%, #040507 52%, #020203 100%);
   background-attachment: fixed;
 }
 
@@ -62,7 +62,7 @@ body::before {
   background-image:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0px, rgba(255, 255, 255, 0.012) 1px, transparent 1px, transparent 2px);
   mix-blend-mode: overlay;
-  opacity: 0.6;
+  opacity: 0.35;
   z-index: 0;
 }
 
@@ -77,7 +77,7 @@ a {
 }
 
 ::selection {
-  background: rgba(214, 179, 106, 0.28);
+  background: rgba(214, 179, 106, 0.22);
   color: #fff8e6;
 }
 
@@ -89,28 +89,29 @@ a {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.12);
   background-clip: padding-box;
   border: 2px solid transparent;
 }
 
+/* ── Glass panel — Filò-inspired premium dark card ── */
 .glass-panel {
   position: relative;
   border: 1px solid var(--line);
   background:
-    linear-gradient(145deg, rgba(20, 24, 31, 0.88), rgba(10, 12, 16, 0.72));
+    linear-gradient(160deg, rgba(7, 9, 12, 0.94), rgba(4, 5, 8, 0.88));
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.035) inset,
-    0 24px 60px -24px rgba(0, 0, 0, 0.65),
-    0 1px 2px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(18px) saturate(1.1);
-  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+    0 1px 0 rgba(255, 255, 255, 0.025) inset,
+    0 24px 60px -24px rgba(0, 0, 0, 0.72),
+    0 1px 2px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(20px) saturate(1.1);
+  -webkit-backdrop-filter: blur(20px) saturate(1.1);
   transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
 }
 
@@ -121,7 +122,7 @@ a {
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(120% 60% at 50% -10%, rgba(255, 255, 255, 0.045), transparent 60%);
+    radial-gradient(120% 60% at 50% -10%, rgba(255, 255, 255, 0.028), transparent 60%);
   opacity: 0.9;
 }
 
@@ -132,16 +133,31 @@ a {
 .glass-panel-interactive:hover {
   border-color: var(--line-strong);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 30px 80px -28px rgba(0, 0, 0, 0.75),
-    0 2px 6px rgba(0, 0, 0, 0.35);
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 32px 80px -28px rgba(0, 0, 0, 0.82),
+    0 2px 6px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
+}
+
+/* Filò-style glass card utility — minimal solid-dark panel */
+.glass-card {
+  background: rgba(8, 10, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 32px -8px rgba(255, 255, 255, 0.04);
 }
 
 .accent-ring {
   box-shadow:
-    0 0 0 1px rgba(214, 179, 106, 0.18),
-    0 0 28px rgba(214, 179, 106, 0.08);
+    0 0 0 1px rgba(214, 179, 106, 0.15),
+    0 0 24px rgba(214, 179, 106, 0.06);
 }
 
 @keyframes fade-in-up {
@@ -165,7 +181,7 @@ a {
 }
 
 @keyframes soft-pulse {
-  0%, 100% { opacity: 0.55; }
+  0%, 100% { opacity: 0.45; }
   50%      { opacity: 1; }
 }
 
@@ -185,13 +201,13 @@ a {
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
 }
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
   background-size: 800px 100%;
   animation: shimmer 1.6s linear infinite;
 }
@@ -213,12 +229,12 @@ a {
   inset: -3px;
   border-radius: 999px;
   background: currentColor;
-  opacity: 0.25;
+  opacity: 0.2;
   animation: soft-pulse 1.8s ease-in-out infinite;
 }
 
 .focus-ring:focus-visible {
-  box-shadow: 0 0 0 2px rgba(214, 179, 106, 0.5), 0 0 0 4px rgba(214, 179, 106, 0.14);
+  box-shadow: 0 0 0 2px rgba(214, 179, 106, 0.45), 0 0 0 4px rgba(214, 179, 106, 0.12);
 }
 
 @media (prefers-reduced-motion: reduce) {

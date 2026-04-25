@@ -30,7 +30,7 @@ export function WorkOrderDetailPanel({ detail }: { detail: DashboardWorkOrderDet
             </h2>
             <p className="mt-3 max-w-3xl text-[15px] leading-7 text-zinc-300">{workOrder.reportedIssue}</p>
           </div>
-          <div className="shrink-0 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="shrink-0 rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-white/[0.015] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">Totale scheda</p>
             <p className="mt-1 text-3xl font-semibold tracking-tight text-zinc-50 tabular-nums">
               {formatCurrency(workOrder.totals.grandTotal)}
@@ -65,9 +65,9 @@ export function WorkOrderDetailPanel({ detail }: { detail: DashboardWorkOrderDet
 
 function Fact({ icon: Icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20">
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-colors hover:border-white/[0.10]">
       <Icon className="mb-3 h-4 w-4 text-accent" />
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</p>
+      <p className="text-[10px] font-mono font-medium uppercase tracking-[0.18em] text-zinc-500">{label}</p>
       <p className="mt-1 text-sm font-medium text-zinc-100 truncate">{value}</p>
     </div>
   );

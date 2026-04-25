@@ -56,7 +56,7 @@ export function NotesPanel({
       <CardHeader title="Note" eyebrow={notes.length > 0 ? `${notes.length} voci` : undefined} />
 
       {canEdit ? (
-        <form ref={formRef} action={formAction} className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <form ref={formRef} action={formAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
           <input type="hidden" name="workOrderId" value={workOrderId} />
           <label className="block">
             <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Aggiungi nota</span>
@@ -85,7 +85,7 @@ export function NotesPanel({
           </div>
         </form>
       ) : (
-        <p className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-zinc-500">
+        <p className="mb-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm leading-6 text-zinc-500">
           La scheda e in sola lettura. Le note restano consultabili ma non piu modificabili.
         </p>
       )}
@@ -95,7 +95,7 @@ export function NotesPanel({
           notes.map((note) => (
             <article
               key={note.id}
-              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20"
+              className="group rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-colors hover:border-white/[0.12]"
             >
               {editingId === note.id ? (
                 <form action={updateAction} className="space-y-3">

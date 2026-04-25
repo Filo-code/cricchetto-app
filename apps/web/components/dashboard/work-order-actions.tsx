@@ -29,7 +29,7 @@ export function WorkOrderActions({ workOrderId, status }: { workOrderId: string;
           <Zap className="h-4 w-4" />
         </div>
         <div>
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-accent/80">Azioni</p>
+          <p className="text-[10px] font-mono font-medium uppercase tracking-[0.2em] text-zinc-500">Azioni</p>
           <h2 className="mt-1 text-lg font-semibold tracking-tight text-zinc-50">Stato operativo</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-500">Usa queste azioni solo quando la lavorazione cambia davvero stato.</p>
         </div>

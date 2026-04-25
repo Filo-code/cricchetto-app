@@ -8,7 +8,7 @@ export function WorkOrderSummaryCard({ workOrder }: { workOrder: DashboardWorkOr
   return (
     <Link
       href={`/dashboard/work-orders/${workOrder.id}`}
-      className="group relative block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all duration-300 ease-out-quint hover:-translate-y-[1px] hover:border-accent/30 hover:bg-white/[0.05] hover:shadow-[0_12px_32px_-16px_rgba(214,179,106,0.28)] focus-visible:border-accent/40 focus-visible:outline-none"
+      className="group relative block overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-all duration-300 ease-out-quint hover:-translate-y-[1px] hover:border-accent/25 hover:bg-white/[0.035] hover:shadow-[0_12px_32px_-16px_rgba(214,179,106,0.22)] focus-visible:border-accent/35 focus-visible:outline-none"
     >
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent/[0.06] opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" aria-hidden />
       <div className="relative flex items-start justify-between gap-3">

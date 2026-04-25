@@ -28,7 +28,7 @@ export function ActivityTimeline({ activity }: { activity: DashboardActivity[] }
             const Icon = EVENT_ICONS[event.eventType] ?? Activity;
             return (
               <li key={event.id} className="relative grid grid-cols-[auto,1fr] gap-3 pl-0">
-                <div className="relative z-10 mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0c0f14] text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="relative z-10 mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-[#060809] text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div className="min-w-0 pb-1">

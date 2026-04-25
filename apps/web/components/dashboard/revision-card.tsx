@@ -23,7 +23,7 @@ export function RevisionCard({ revisions }: { revisions: DashboardRevision[] }) 
               <Link
                 key={revision.vehicleId}
                 href={`/dashboard/vehicles/${revision.plate}`}
-                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all duration-200 ease-out-quint hover:-translate-y-[1px] hover:border-accent/30 hover:bg-white/[0.05]"
+                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 transition-all duration-200 ease-out-quint hover:-translate-y-[1px] hover:border-accent/20 hover:bg-white/[0.035]"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

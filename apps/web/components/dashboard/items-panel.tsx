@@ -89,7 +89,7 @@ export function ItemsPanel({
       />
 
       {editor === "part" ? (
-        <form ref={partFormRef} action={partAction} className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <form ref={partFormRef} action={partAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
           <input type="hidden" name="workOrderId" value={workOrderId} />
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
@@ -119,7 +119,7 @@ export function ItemsPanel({
       ) : null}
 
       {editor === "labor" ? (
-        <form ref={laborFormRef} action={laborAction} className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <form ref={laborFormRef} action={laborAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
           <input type="hidden" name="workOrderId" value={workOrderId} />
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
@@ -134,7 +134,7 @@ export function ItemsPanel({
             <Field label="Ore">
               <Input name="hours" type="number" min="0.1" step="0.1" inputMode="decimal" placeholder="1.5" required />
             </Field>
-            <div className="rounded-2xl border border-white/10 bg-[#0b0f14] px-4 py-3 text-sm leading-6 text-zinc-500">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm leading-6 text-zinc-500">
               La descrizione resta <span className="text-zinc-300">Manodopera</span> e il prezzo viene calcolato con la tariffa oraria configurata per l&apos;officina.
             </div>
           </div>
@@ -239,7 +239,7 @@ export function ItemsPanel({
         </p>
       ) : null}
       {!canEdit ? (
-        <p className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-zinc-500">
+        <p className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm leading-6 text-zinc-500">
           La scheda e in sola lettura. Ricambi e manodopera possono essere aggiunti solo finche la scheda resta operativa.
         </p>
       ) : null}
