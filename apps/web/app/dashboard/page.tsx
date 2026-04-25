@@ -6,6 +6,7 @@ import { KpiCard } from "../../components/dashboard/kpi-card";
 import { NewWorkOrderDialog } from "../../components/dashboard/new-work-order-dialog";
 import { PlateSearch } from "../../components/dashboard/plate-search";
 import { RevisionCard } from "../../components/dashboard/revision-card";
+import { VehicleHistorySearch } from "../../components/dashboard/vehicle-history-search";
 import { WorkOrderListCard } from "../../components/dashboard/work-order-list-card";
 import { dashboardGet } from "../../lib/dashboard/api-client";
 import type { DashboardOverview } from "../../lib/dashboard/types";
@@ -64,6 +65,7 @@ export default async function DashboardPage() {
           />
         </div>
         <div className="space-y-5">
+          <VehicleHistorySearch />
           <RevisionCard revisions={overview.upcomingRevisions} />
           <ActivityTimeline activity={overview.recentActivity} />
         </div>

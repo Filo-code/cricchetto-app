@@ -1,12 +1,13 @@
 "use client";
 
-import { StickyNote, Trash2 } from "lucide-react";
+import { Pencil, StickyNote, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef } from "react";
-import { addWorkOrderNoteAction, voidWorkOrderNoteAction, type DashboardActionState } from "../../lib/dashboard/actions";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { addWorkOrderNoteAction, updateWorkOrderNoteAction, voidWorkOrderNoteAction, type DashboardActionState } from "../../lib/dashboard/actions";
 import { formatDateTime } from "../../lib/dashboard/formatters";
 import type { DashboardNote } from "../../lib/dashboard/types";
 import type { WorkOrderStatus } from "../../lib/types";
+import { Button } from "../ui/button";
 import { Card, CardHeader } from "../ui/card";
 import { Textarea } from "../ui/textarea";
 import { EmptyState } from "./empty-state";
@@ -26,6 +27,8 @@ export function NotesPanel({
 }) {
   const [state, formAction] = useActionState(addWorkOrderNoteAction, initialState);
   const [voidState, voidAction] = useActionState(voidWorkOrderNoteAction, initialState);
+  const [updateState, updateAction] = useActionState(updateWorkOrderNoteAction, initialState);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const canEdit = MUTABLE_STATUSES.includes(status);
@@ -40,6 +43,13 @@ export function NotesPanel({
   useEffect(() => {
     if (voidState.ok) router.refresh();
   }, [voidState.ok, voidState.stamp, router]);
+
+  useEffect(() => {
+    if (updateState.ok) {
+      setEditingId(null);
+      router.refresh();
+    }
+  }, [updateState.ok, updateState.stamp, router]);
 
   return (
     <Card>
@@ -87,28 +97,68 @@ export function NotesPanel({
               key={note.id}
               className="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20"
             >
-              <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-200">{note.note}</p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="flex items-center gap-1.5 text-xs text-zinc-600">
-                  <span className="tabular-nums">{formatDateTime(note.createdAt)}</span>
-                  <span className="text-zinc-700">-</span>
-                  <span>{note.createdBy ?? "Operatore"}</span>
-                </p>
-                {canEdit ? (
-                  <form action={voidAction}>
-                    <input type="hidden" name="workOrderId" value={workOrderId} />
-                    <input type="hidden" name="noteId" value={note.id} />
-                    <button
-                      type="submit"
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 opacity-0 transition-all hover:bg-danger-soft hover:text-red-300 group-hover:opacity-100"
-                      aria-label="Rimuovi nota"
-                      onClick={(e) => { if (!confirm("Rimuovere questa nota?")) e.preventDefault(); }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </form>
-                ) : null}
-              </div>
+              {editingId === note.id ? (
+                <form action={updateAction} className="space-y-3">
+                  <input type="hidden" name="workOrderId" value={workOrderId} />
+                  <input type="hidden" name="noteId" value={note.id} />
+                  <Textarea
+                    name="note"
+                    defaultValue={note.note}
+                    required
+                    className="min-h-24"
+                    aria-label="Testo nota"
+                  />
+                  {updateState.message ? (
+                    <p className={updateState.ok
+                      ? "rounded-xl border border-success/25 bg-success-soft px-4 py-3 text-sm text-emerald-200 animate-fade-in"
+                      : "rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-sm text-red-200 animate-fade-in"
+                    }>
+                      {updateState.message}
+                    </p>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <FormSubmitButton label="Salva nota" pendingLabel="Salvataggio..." className="sm:min-w-36" />
+                    <Button type="button" variant="ghost" onClick={() => setEditingId(null)} aria-label="Annulla modifica">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-200">{note.note}</p>
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-xs text-zinc-600">
+                      <span className="tabular-nums">{formatDateTime(note.createdAt)}</span>
+                      <span className="text-zinc-700">-</span>
+                      <span>{note.createdBy ?? "Operatore"}</span>
+                    </p>
+                    {canEdit ? (
+                      <div className="flex gap-1 opacity-0 transition-all group-hover:opacity-100">
+                        <button
+                          type="button"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-white/10 hover:text-zinc-300"
+                          aria-label="Modifica nota"
+                          onClick={() => setEditingId(note.id)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <form action={voidAction}>
+                          <input type="hidden" name="workOrderId" value={workOrderId} />
+                          <input type="hidden" name="noteId" value={note.id} />
+                          <button
+                            type="submit"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-danger-soft hover:text-red-300"
+                            aria-label="Rimuovi nota"
+                            onClick={(e) => { if (!confirm("Rimuovere questa nota?")) e.preventDefault(); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </form>
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </article>
           ))
         ) : (

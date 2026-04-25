@@ -1,10 +1,10 @@
 "use client";
 
-import { PackagePlus, Trash2, Wrench, X } from "lucide-react";
+import { PackagePlus, Pencil, Trash2, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { addWorkOrderLaborAction, addWorkOrderPartAction, voidWorkOrderItemAction, type DashboardActionState } from "../../lib/dashboard/actions";
+import { addWorkOrderLaborAction, addWorkOrderPartAction, updateWorkOrderItemAction, voidWorkOrderItemAction, type DashboardActionState } from "../../lib/dashboard/actions";
 import type { DashboardItem } from "../../lib/dashboard/types";
 import { formatCurrency, itemTypeLabel } from "../../lib/dashboard/formatters";
 import type { WorkOrderStatus } from "../../lib/types";
@@ -29,9 +29,11 @@ export function ItemsPanel({
   status: WorkOrderStatus;
 }) {
   const [editor, setEditor] = useState<"part" | "labor" | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [partState, partAction] = useActionState(addWorkOrderPartAction, initialState);
   const [laborState, laborAction] = useActionState(addWorkOrderLaborAction, initialState);
   const [voidState, voidAction] = useActionState(voidWorkOrderItemAction, initialState);
+  const [updateState, updateAction] = useActionState(updateWorkOrderItemAction, initialState);
   const partFormRef = useRef<HTMLFormElement>(null);
   const laborFormRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
@@ -57,6 +59,13 @@ export function ItemsPanel({
   useEffect(() => {
     if (voidState.ok) router.refresh();
   }, [voidState.ok, voidState.stamp, router]);
+
+  useEffect(() => {
+    if (updateState.ok) {
+      setEditingId(null);
+      router.refresh();
+    }
+  }, [updateState.ok, updateState.stamp, router]);
 
   return (
     <Card>
@@ -149,33 +158,73 @@ export function ItemsPanel({
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="transition-colors">
-                <Td>
-                  <Badge tone={item.itemType === "labor" ? "blue" : "amber"}>{itemTypeLabel(item.itemType)}</Badge>
-                </Td>
-                <Td className="text-zinc-100">{item.description}</Td>
-                <Td className="tabular-nums">{item.quantity.toLocaleString("it-IT")}</Td>
-                <Td className="tabular-nums">{formatCurrency(item.unitPrice)}</Td>
-                <Td className="font-medium text-zinc-50 tabular-nums">{formatCurrency(item.rowTotal)}</Td>
-                {canEdit ? (
+            {items.map((item) => {
+              if (editingId === item.id) {
+                return (
+                  <tr key={item.id}>
+                    <td colSpan={canEdit ? 6 : 5} className="px-4 py-3">
+                      <form action={updateAction} className="flex flex-wrap items-end gap-3">
+                        <input type="hidden" name="workOrderId" value={workOrderId} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <Field label="Descrizione">
+                          <Input name="description" defaultValue={item.description} required autoComplete="off" className="min-w-40" />
+                        </Field>
+                        <Field label="Quantita">
+                          <Input name="quantity" type="number" min="0.01" step="0.01" inputMode="decimal" defaultValue={item.quantity} required className="w-24" />
+                        </Field>
+                        <Field label="Prezzo unitario">
+                          <Input name="unitPrice" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={item.unitPrice} required className="w-28" />
+                        </Field>
+                        <div className="flex gap-2 pb-0.5">
+                          <FormSubmitButton label="Salva" pendingLabel="Salvataggio..." />
+                          <Button type="button" variant="ghost" onClick={() => setEditingId(null)} aria-label="Annulla modifica">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </form>
+                      {updateState.message ? <FeedbackMessage state={updateState} /> : null}
+                    </td>
+                  </tr>
+                );
+              }
+              return (
+                <tr key={item.id} className="transition-colors">
                   <Td>
-                    <form action={voidAction}>
-                      <input type="hidden" name="workOrderId" value={workOrderId} />
-                      <input type="hidden" name="itemId" value={item.id} />
-                      <button
-                        type="submit"
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-danger-soft hover:text-red-300"
-                        aria-label="Rimuovi voce"
-                        onClick={(e) => { if (!confirm("Rimuovere questa voce dalla scheda?")) e.preventDefault(); }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </form>
+                    <Badge tone={item.itemType === "labor" ? "blue" : "amber"}>{itemTypeLabel(item.itemType)}</Badge>
                   </Td>
-                ) : null}
-              </tr>
-            ))}
+                  <Td className="text-zinc-100">{item.description}</Td>
+                  <Td className="tabular-nums">{item.quantity.toLocaleString("it-IT")}</Td>
+                  <Td className="tabular-nums">{formatCurrency(item.unitPrice)}</Td>
+                  <Td className="font-medium text-zinc-50 tabular-nums">{formatCurrency(item.rowTotal)}</Td>
+                  {canEdit ? (
+                    <Td>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-white/10 hover:text-zinc-300"
+                          aria-label="Modifica voce"
+                          onClick={() => setEditingId(item.id)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <form action={voidAction}>
+                          <input type="hidden" name="workOrderId" value={workOrderId} />
+                          <input type="hidden" name="itemId" value={item.id} />
+                          <button
+                            type="submit"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-danger-soft hover:text-red-300"
+                            aria-label="Rimuovi voce"
+                            onClick={(e) => { if (!confirm("Rimuovere questa voce dalla scheda?")) e.preventDefault(); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </form>
+                      </div>
+                    </Td>
+                  ) : null}
+                </tr>
+              );
+            })}
           </tbody>
         </Table>
       ) : (

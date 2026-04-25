@@ -192,6 +192,52 @@ export async function generateEstimateAction(_state: DashboardActionState, formD
   }
 }
 
+export async function updateWorkOrderItemAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const workOrderId = textValue(formData, "workOrderId");
+  const itemId = textValue(formData, "itemId");
+  const description = textValue(formData, "description");
+  const quantity = decimalValue(formData, "quantity");
+  const unitPrice = decimalValue(formData, "unitPrice");
+
+  if (!workOrderId || !itemId) return failureState("Voce non valida.");
+  if (!description) return failureState("La descrizione è obbligatoria.");
+  if (quantity === null || quantity <= 0) return failureState("Inserisci una quantità valida maggiore di zero.");
+  if (unitPrice === null || unitPrice < 0) return failureState("Inserisci un prezzo unitario valido.");
+
+  try {
+    await dashboardPost(
+      `/api/work-orders/${encodeURIComponent(workOrderId)}/items/${encodeURIComponent(itemId)}`,
+      { actorRef: "dashboard", description, quantity, unitPrice },
+      "PATCH",
+    );
+    revalidateWorkOrderPaths(workOrderId);
+    return successState("Voce aggiornata.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateWorkOrderNoteAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const workOrderId = textValue(formData, "workOrderId");
+  const noteId = textValue(formData, "noteId");
+  const note = textValue(formData, "note");
+
+  if (!workOrderId || !noteId) return failureState("Nota non valida.");
+  if (!note) return failureState("La nota non può essere vuota.");
+
+  try {
+    await dashboardPost(
+      `/api/work-orders/${encodeURIComponent(workOrderId)}/notes/${encodeURIComponent(noteId)}`,
+      { actorRef: "dashboard", note },
+      "PATCH",
+    );
+    revalidateWorkOrderPaths(workOrderId);
+    return successState("Nota aggiornata.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function voidWorkOrderItemAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
   const workOrderId = textValue(formData, "workOrderId");
   const itemId = textValue(formData, "itemId");
