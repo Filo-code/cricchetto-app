@@ -237,16 +237,92 @@ export async function readVehicleForMutation(id: string): Promise<{ workshopId: 
   return { workshopId: data.workshop_id, vehicleId: data.id };
 }
 
-export async function getWorkshopSettings(): Promise<{ id: string; name: string; displayName: string | null; timezone: string }> {
+export interface WorkshopFullSettings {
+  id: string;
+  name: string;
+  displayName: string | null;
+  timezone: string;
+  logoUrl: string | null;
+  ragioneSociale: string | null;
+  partitaIva: string | null;
+  codiceFiscale: string | null;
+  indirizzo: string | null;
+  citta: string | null;
+  cap: string | null;
+  provincia: string | null;
+  telefono: string | null;
+  email: string | null;
+  pec: string | null;
+  sdi: string | null;
+  condizioniAccettazione: string | null;
+  condizioniPreventivo: string | null;
+  footerDocumenti: string | null;
+}
+
+export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
-  let query = supabaseServer.from("workshops").select("id,name,display_name,timezone").order("created_at", { ascending: true }).limit(1);
+  let workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").order("created_at", { ascending: true }).limit(1);
   if (configuredWorkshopId) {
-    query = supabaseServer.from("workshops").select("id,name,display_name,timezone").eq("id", configuredWorkshopId).limit(1);
+    workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", configuredWorkshopId).limit(1);
   }
-  const { data, error } = await query.maybeSingle();
+  const { data, error } = await workshopQuery.maybeSingle();
   if (error) throw new Error(`Failed to read workshop: ${error.message}`);
   if (!data) throw new Error("No workshop configured for dashboard");
-  return { id: data.id, name: data.name, displayName: (data as any).display_name ?? null, timezone: data.timezone };
+
+  const { data: profile } = await (supabaseServer as any)
+    .from("workshop_profiles")
+    .select("ragione_sociale,partita_iva,codice_fiscale,indirizzo,citta,cap,provincia,telefono,email,pec,sdi,condizioni_accettazione,condizioni_preventivo,footer_documenti")
+    .eq("workshop_id", data.id)
+    .maybeSingle();
+
+  const p = (profile as any) ?? {};
+
+  return {
+    id: data.id,
+    name: data.name,
+    displayName: (data as any).display_name ?? null,
+    timezone: data.timezone,
+    logoUrl: (data as any).logo_url ?? null,
+    ragioneSociale: p.ragione_sociale ?? null,
+    partitaIva: p.partita_iva ?? null,
+    codiceFiscale: p.codice_fiscale ?? null,
+    indirizzo: p.indirizzo ?? null,
+    citta: p.citta ?? null,
+    cap: p.cap ?? null,
+    provincia: p.provincia ?? null,
+    telefono: p.telefono ?? null,
+    email: p.email ?? null,
+    pec: p.pec ?? null,
+    sdi: p.sdi ?? null,
+    condizioniAccettazione: p.condizioni_accettazione ?? null,
+    condizioniPreventivo: p.condizioni_preventivo ?? null,
+    footerDocumenti: p.footer_documenti ?? null,
+  };
+}
+
+export async function uploadWorkshopLogo(workshopId: string, file: File): Promise<string> {
+  const { Buffer } = await import("node:buffer");
+  const BUCKET = process.env.Criccheto_ATTACHMENTS_BUCKET || "attachments";
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const storagePath = `${workshopId}/logo/logo-${Date.now()}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await supabaseServer.storage
+    .from(BUCKET)
+    .upload(storagePath, bytes, { contentType: file.type, upsert: true });
+
+  if (uploadError) throw new Error(`Upload logo fallito: ${uploadError.message}`);
+
+  const { data: { publicUrl } } = supabaseServer.storage.from(BUCKET).getPublicUrl(storagePath);
+
+  const { error: updateError } = await supabaseServer
+    .from("workshops")
+    .update({ logo_url: publicUrl } as Record<string, unknown>)
+    .eq("id", workshopId);
+
+  if (updateError) throw new Error(`Salvataggio logo_url fallito: ${updateError.message}`);
+
+  return publicUrl;
 }
 
 export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string }> {

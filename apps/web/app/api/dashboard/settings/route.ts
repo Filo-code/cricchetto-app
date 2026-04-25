@@ -1,9 +1,9 @@
 import { AppError, getErrorMessage } from "../../../../lib/errors";
 import { requireDashboardRequest } from "../../../../lib/dashboard/auth";
-import { getWorkshopSettings } from "../../../../lib/dashboard/read";
+import { getWorkshopSettings, type WorkshopFullSettings } from "../../../../lib/dashboard/read";
 import { supabaseServer } from "../../../../lib/supabase-server";
 
-type SettingsResponse = { ok: true; data: { id: string; name: string; displayName: string | null; timezone: string } } | { ok: false; error: string };
+type SettingsResponse = { ok: true; data: WorkshopFullSettings } | { ok: false; error: string };
 type UpdateResponse = { ok: true; data: { displayName: string } } | { ok: false; error: string };
 
 export async function GET(request: Request): Promise<Response> {

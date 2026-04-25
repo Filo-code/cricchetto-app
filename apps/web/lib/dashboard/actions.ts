@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { uploadDashboardAttachment } from "../attachments";
-import { readWorkOrderForMutation } from "./read";
+import { readWorkOrderForMutation, getWorkshopSettings, uploadWorkshopLogo } from "./read";
 import { DashboardApiError, dashboardPost } from "./api-client";
 
 export interface DashboardActionState {
@@ -286,6 +286,68 @@ export async function updateWorkshopDisplayNameAction(_state: DashboardActionSta
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/settings");
     return successState("Nome aggiornato con successo.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateWorkshopProfileAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  try {
+    await dashboardPost("/api/dashboard/settings/profile", {
+      ragioneSociale: textValue(formData, "ragioneSociale"),
+      partitaIva: textValue(formData, "partitaIva"),
+      codiceFiscale: textValue(formData, "codiceFiscale"),
+      indirizzo: textValue(formData, "indirizzo"),
+      citta: textValue(formData, "citta"),
+      cap: textValue(formData, "cap"),
+      provincia: textValue(formData, "provincia"),
+      telefono: textValue(formData, "telefono"),
+      email: textValue(formData, "email"),
+      pec: textValue(formData, "pec"),
+      sdi: textValue(formData, "sdi"),
+    }, "PATCH");
+    revalidatePath("/dashboard/settings");
+    return successState("Dati fiscali aggiornati.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateWorkshopLegalAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  try {
+    await dashboardPost("/api/dashboard/settings/legal", {
+      condizioniAccettazione: textValue(formData, "condizioniAccettazione"),
+      condizioniPreventivo: textValue(formData, "condizioniPreventivo"),
+      footerDocumenti: textValue(formData, "footerDocumenti"),
+    }, "PATCH");
+    revalidatePath("/dashboard/settings");
+    return successState("Testi legali aggiornati.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function uploadWorkshopLogoAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const file = formData.get("logo");
+
+  if (!(file instanceof File) || file.size <= 0) {
+    return failureState("Seleziona un file immagine.");
+  }
+
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"];
+  if (!allowedTypes.includes(file.type)) {
+    return failureState("Formato non supportato. Usa JPG, PNG, WebP o SVG.");
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    return failureState("Il logo non può superare i 2 MB.");
+  }
+
+  try {
+    const settings = await getWorkshopSettings();
+    await uploadWorkshopLogo(settings.id, file);
+    revalidatePath("/dashboard/settings");
+    return successState("Logo aggiornato con successo.");
   } catch (error) {
     return errorState(error);
   }
