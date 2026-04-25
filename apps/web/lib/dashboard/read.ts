@@ -237,6 +237,18 @@ export async function readVehicleForMutation(id: string): Promise<{ workshopId: 
   return { workshopId: data.workshop_id, vehicleId: data.id };
 }
 
+export async function getWorkshopSettings(): Promise<{ id: string; name: string; displayName: string | null; timezone: string }> {
+  const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
+  let query = supabaseServer.from("workshops").select("id,name,display_name,timezone").order("created_at", { ascending: true }).limit(1);
+  if (configuredWorkshopId) {
+    query = supabaseServer.from("workshops").select("id,name,display_name,timezone").eq("id", configuredWorkshopId).limit(1);
+  }
+  const { data, error } = await query.maybeSingle();
+  if (error) throw new Error(`Failed to read workshop: ${error.message}`);
+  if (!data) throw new Error("No workshop configured for dashboard");
+  return { id: data.id, name: data.name, displayName: (data as any).display_name ?? null, timezone: data.timezone };
+}
+
 export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string }> {
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
   let query = supabaseServer.from("workshops").select("id,name,display_name,timezone").order("created_at", { ascending: true }).limit(1);

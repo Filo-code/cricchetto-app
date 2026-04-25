@@ -1,4 +1,4 @@
-import { Gauge, LogOut } from "lucide-react";
+import { Gauge, LogOut, Settings } from "lucide-react";
 import { logoutAction } from "../../app/login/actions";
 import { Button, ButtonLink } from "../ui/button";
 
@@ -19,6 +19,10 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle: 
         <ButtonLink href="/dashboard" aria-label="Torna al cruscotto" className="shrink-0">
           <Gauge className="h-4 w-4" />
           Cruscotto
+        </ButtonLink>
+        <ButtonLink href="/dashboard/settings" aria-label="Impostazioni officina" className="shrink-0">
+          <Settings className="h-4 w-4" />
+          Impostazioni
         </ButtonLink>
         <form action={logoutAction}>
           <Button type="submit" aria-label="Esci dalla dashboard" className="shrink-0">

@@ -277,6 +277,20 @@ export async function removeAttachmentAction(_state: DashboardActionState, formD
   }
 }
 
+export async function updateWorkshopDisplayNameAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const displayName = textValue(formData, "displayName");
+  if (!displayName) return failureState("Il nome visualizzato non può essere vuoto.");
+
+  try {
+    await dashboardPost("/api/dashboard/settings", { displayName }, "PATCH");
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/settings");
+    return successState("Nome aggiornato con successo.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function uploadWorkOrderAttachmentAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
   const workOrderId = textValue(formData, "workOrderId");
   const file = formData.get("file");
