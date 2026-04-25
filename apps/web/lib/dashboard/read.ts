@@ -325,17 +325,17 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
   return publicUrl;
 }
 
-export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string }> {
+export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null }> {
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
-  let query = supabaseServer.from("workshops").select("id,name,display_name,timezone").order("created_at", { ascending: true }).limit(1);
+  let query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").order("created_at", { ascending: true }).limit(1);
   if (configuredWorkshopId) {
-    query = supabaseServer.from("workshops").select("id,name,display_name,timezone").eq("id", configuredWorkshopId).limit(1);
+    query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", configuredWorkshopId).limit(1);
   }
 
   const { data, error } = await query.maybeSingle();
   if (error) throw new Error(`Failed to read workshop: ${error.message}`);
   if (!data) throw new Error("No workshop configured for dashboard");
-  return { id: data.id, name: (data as any).display_name ?? data.name, timezone: data.timezone };
+  return { id: data.id, name: (data as any).display_name ?? data.name, timezone: data.timezone, logoUrl: (data as any).logo_url ?? null };
 }
 
 async function readSearchVehicles(workshopId: string, query: string): Promise<DashboardSearchVehicle[]> {

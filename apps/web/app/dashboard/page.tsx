@@ -21,6 +21,7 @@ export default async function DashboardPage() {
       <DashboardHeader
         title={overview.workshop.name}
         subtitle="Vista operativa targa-prima per schede attive, consegne pronte, revisioni e attività recenti."
+        logoUrl={overview.workshop.logoUrl}
       />
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">

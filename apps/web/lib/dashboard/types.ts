@@ -56,6 +56,7 @@ export interface DashboardOverview {
     id: string;
     name: string;
     timezone: string;
+    logoUrl: string | null;
   };
   counts: {
     active: number;
