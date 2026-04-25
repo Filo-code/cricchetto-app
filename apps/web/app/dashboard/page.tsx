@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, ClipboardList, Wrench } from "lucide-react";
+import { CalendarClock, Car, CheckCircle2, ClipboardList, Wrench } from "lucide-react";
 import { ActivityTimeline } from "../../components/dashboard/activity-timeline";
 import { DashboardHeader } from "../../components/dashboard/dashboard-header";
 import { DashboardShell } from "../../components/dashboard/dashboard-shell";
@@ -6,8 +6,8 @@ import { KpiCard } from "../../components/dashboard/kpi-card";
 import { NewWorkOrderDialog } from "../../components/dashboard/new-work-order-dialog";
 import { PlateSearch } from "../../components/dashboard/plate-search";
 import { RevisionCard } from "../../components/dashboard/revision-card";
-import { VehicleHistorySearch } from "../../components/dashboard/vehicle-history-search";
 import { WorkOrderListCard } from "../../components/dashboard/work-order-list-card";
+import { ButtonLink } from "../../components/ui/button";
 import { dashboardGet } from "../../lib/dashboard/api-client";
 import type { DashboardOverview } from "../../lib/dashboard/types";
 
@@ -25,7 +25,11 @@ export default async function DashboardPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            <ButtonLink href="/dashboard/vehicles" variant="ghost">
+              <Car className="h-4 w-4" />
+              Storico auto
+            </ButtonLink>
             <NewWorkOrderDialog />
           </div>
           <PlateSearch />
@@ -65,7 +69,6 @@ export default async function DashboardPage() {
           />
         </div>
         <div className="space-y-5">
-          <VehicleHistorySearch />
           <RevisionCard revisions={overview.upcomingRevisions} />
           <ActivityTimeline activity={overview.recentActivity} />
         </div>

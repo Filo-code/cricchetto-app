@@ -1,4 +1,4 @@
-import { Gauge, LogOut, Wrench } from "lucide-react";
+import { Gauge, LogOut } from "lucide-react";
 import { logoutAction } from "../../app/login/actions";
 import { Button, ButtonLink } from "../ui/button";
 
@@ -6,9 +6,9 @@ export function DashboardHeader({ title, subtitle }: { title: string; subtitle: 
   return (
     <header className="mb-8 flex flex-col gap-5 border-b border-white/[0.08] pb-8 lg:flex-row lg:items-end lg:justify-between animate-fade-in-up">
       <div className="min-w-0">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/[0.08] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <Wrench className="h-3.5 w-3.5" />
-          Cricchetto
+        <div className="mb-4 inline-flex items-center gap-2.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
+          <img src="/brand/criccheto-logo-symbol.svg" alt="Cricchetto" className="h-5 w-auto mix-blend-screen" width={388} height={189} />
+          <span className="text-[10.5px] font-medium tracking-[0.18em] uppercase text-zinc-500">by Filò</span>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-[2.5rem] sm:leading-[1.1]">
           {title}

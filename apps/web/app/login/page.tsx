@@ -1,6 +1,5 @@
 "use client";
 
-import { LockKeyhole } from "lucide-react";
 import { useActionState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -13,15 +12,18 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="glass-panel w-full max-w-sm rounded-2xl p-6">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/25 bg-accent/[0.08] text-accent">
-            <LockKeyhole className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-zinc-50">Cricchetto</p>
-            <p className="text-xs text-zinc-500">Accesso dashboard</p>
-          </div>
+      <div className="glass-panel w-full max-w-sm rounded-2xl p-7">
+        <div className="mb-8 text-center">
+          <img
+            src="/brand/criccheto-logo-symbol.svg"
+            alt="Cricchetto"
+            className="mx-auto h-20 w-auto mix-blend-screen"
+            width={388}
+            height={189}
+          />
+          <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-600">
+            by Filò · Dashboard
+          </p>
         </div>
 
         <form action={formAction} className="space-y-4">

@@ -89,6 +89,15 @@ export async function getUpcomingRevisions(): Promise<DashboardRevision[]> {
   return readUpcomingRevisions(workshop.id, workshop.timezone, 50);
 }
 
+export async function listVehicles(query: string): Promise<DashboardSearchVehicle[]> {
+  const workshop = await readDashboardWorkshop();
+  const cleanQuery = query.trim().replace(/\s+/g, " ");
+  if (cleanQuery.length >= 2) {
+    return readSearchVehicles(workshop.id, cleanQuery);
+  }
+  return readRecentVehiclesList(workshop.id, 50);
+}
+
 export async function searchDashboard(query: string): Promise<DashboardSearchResult> {
   const workshop = await readDashboardWorkshop();
   const cleanQuery = query.trim().replace(/\s+/g, " ");
@@ -340,6 +349,34 @@ async function readSearchWorkOrders(workshopId: string, query: string, activeOnl
   const totalsById = await readTotalsByWorkOrderIds(workshopId, rows.map((row) => row.id));
   const revisionsByVehicle = await readRevisionByVehicleIds(workshopId, rows.map((row) => row.vehicle_id));
   return rows.map((row) => toWorkOrderSummary(row, totalsById.get(row.id), revisionsByVehicle.get(row.vehicle_id) ?? null));
+}
+
+async function readRecentVehiclesList(workshopId: string, limit: number): Promise<DashboardSearchVehicle[]> {
+  const { data, error } = await supabaseServer
+    .from("vehicles")
+    .select("id,customer_id,plate_normalized,model,revision_due_date,updated_at")
+    .eq("workshop_id", workshopId)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`Failed to list vehicles: ${error.message}`);
+  const rows = data ?? [];
+  const [customersById, activeByPlate] = await Promise.all([
+    readCustomersByIds(workshopId, rows.map((v) => v.customer_id).filter(Boolean) as string[]),
+    readActiveWorkOrdersByPlates(workshopId, rows.map((v) => v.plate_normalized)),
+  ]);
+  return rows.map((vehicle) => {
+    const active = activeByPlate.get(vehicle.plate_normalized) ?? null;
+    return {
+      vehicleId: vehicle.id,
+      plate: vehicle.plate_normalized,
+      model: vehicle.model,
+      customerName: vehicle.customer_id ? customersById.get(vehicle.customer_id)?.name ?? null : null,
+      revisionDueDate: vehicle.revision_due_date,
+      activeWorkOrderId: active?.id ?? null,
+      activeWorkOrderStatus: (active?.status as WorkOrderStatus | undefined) ?? null,
+    };
+  });
 }
 
 async function readWorkOrderSummaries(workshopId: string, statuses: WorkOrderStatus[], limit: number): Promise<DashboardWorkOrderSummary[]> {
