@@ -12,4 +12,5 @@ export type ParsedCommand =
   | { kind: "REVISIONE_UPDATE"; plate: string; revisionDueDate: string }
   | { kind: "REVISIONIINSCADENZA" }
   | { kind: "CERCA"; query: string }
-  | { kind: "INVIA_DOCUMENTO"; plate: string; documentType: DocumentType };
+  | { kind: "INVIA_DOCUMENTO"; plate: string; documentType: DocumentType }
+  | { kind: "COMANDO" };

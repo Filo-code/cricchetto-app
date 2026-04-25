@@ -40,16 +40,18 @@ check (status in ('pending', 'generating', 'ready', 'failed', 'void'));
 
 create table if not exists public.vehicle_revision_events (
   id uuid primary key default gen_random_uuid(),
-  vehicle_id uuid not null references public.vehicles(id) on delete cascade,
+  workshop_id uuid not null references public.workshops(id) on delete cascade,
+  vehicle_id uuid not null,
   previous_revision_due_date date,
   new_revision_due_date date,
-  source text not null default 'manual',
+  source text not null check (source in ('whatsapp','telegram_test','dashboard','system')),
   created_by text,
-  created_at timestamp with time zone not null default now()
+  created_at timestamptz not null default now(),
+  foreign key (workshop_id, vehicle_id) references public.vehicles(workshop_id, id)
 );
 
-create index if not exists vehicle_revision_events_vehicle_id_created_at_idx
-on public.vehicle_revision_events(vehicle_id, created_at desc);
+create index if not exists idx_vehicle_revision_events_vehicle
+  on public.vehicle_revision_events(workshop_id, vehicle_id, created_at desc);
 
 create or replace function complete_intake_work_order(
   p_workshop_id uuid,

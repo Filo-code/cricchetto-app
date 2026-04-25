@@ -27,6 +27,10 @@ export function parseCommand(input: ParseInput): ParsedCommand {
     throw unknownCommand();
   }
 
+  if (keyword === "COMANDO") {
+    return { kind: "COMANDO" };
+  }
+
   if (keyword === "REVISIONIINSCADENZA") {
     if (tokens.length !== 1) {
       throw malformed("REVISIONIINSCADENZA non richiede altri dati.");
@@ -129,6 +133,6 @@ function malformed(publicMessage: string): AppError {
 function unknownCommand(): AppError {
   return new AppError("Unknown command", {
     parseStatus: "unknown_command",
-    publicMessage: "Comando non riconosciuto.\nUsa: NUOVA, STATO, NOTA, RICAMBIO, MANODOPERA, CHIUDI, RITIRATA, REVISIONE, REVISIONIINSCADENZA, CERCA/RICERCA, INVIA.",
+    publicMessage: "Comando non riconosciuto.\nUsa: NUOVA, STATO, NOTA, RICAMBIO, MANODOPERA, CHIUDI, RITIRATA, REVISIONE, REVISIONIINSCADENZA, CERCA/RICERCA, INVIA, COMANDO.",
   });
 }

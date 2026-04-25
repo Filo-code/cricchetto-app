@@ -154,7 +154,58 @@ async function executeParsedCommand(command: ReturnType<typeof parseCommand>, ro
         recipientIdentifier: inbound.senderIdentifier,
         providerMessageId: inbound.providerMessageId,
       });
+    case "COMANDO":
+      return commandHelpResult();
   }
+}
+
+function commandHelpResult(): CommandExecutionResult {
+  const text = [
+    "COMANDI DISPONIBILI",
+    "",
+    "NUOVA AB123CD",
+    "Crea o riprende una scheda per targa.",
+    "",
+    "CERCA AB123CD",
+    "Cerca storico veicolo o schede aperte.",
+    "",
+    "NOTA AB123CD testo nota",
+    "Aggiunge una nota alla scheda.",
+    "",
+    "STATO AB123CD",
+    "Mostra stato e totale scheda.",
+    "",
+    "RICAMBIO AB123CD descrizione qty prezzo",
+    "Aggiunge un ricambio alla scheda.",
+    "",
+    "MANODOPERA AB123CD ore",
+    "Aggiunge ore di manodopera alla scheda.",
+    "",
+    "CHIUDI AB123CD",
+    "Marca il veicolo come pronto al ritiro.",
+    "",
+    "RITIRATA AB123CD",
+    "Conferma ritiro veicolo e chiude scheda.",
+    "",
+    "REVISIONE AB123CD 2026-05-20",
+    "Aggiorna la scadenza revisione.",
+    "",
+    "REVISIONE AB123CD",
+    "Consulta la scadenza revisione.",
+    "",
+    "REVISIONIINSCADENZA",
+    "Revisioni in scadenza nei prossimi 30 giorni.",
+    "",
+    "INVIA ACCETTAZIONE|PREVENTIVO|RIEPILOGO AB123CD",
+    "Recupera link documento se gia generato.",
+    "",
+    "COMANDO",
+    "Mostra questa guida.",
+  ].join("\n");
+  return {
+    parseStatus: "processed",
+    replies: [{ recipientIdentifier: "", text, idempotencyKey: "" }],
+  };
 }
 
 async function searchByPlateOrCustomer(workshopId: string, query: string): Promise<CommandExecutionResult> {

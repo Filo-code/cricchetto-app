@@ -1,9 +1,9 @@
 "use client";
 
-import { Download, File as FileIcon, FileImage, Headphones, Upload, X } from "lucide-react";
+import { Download, File as FileIcon, FileImage, Headphones, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
-import { uploadWorkOrderAttachmentAction, type DashboardActionState } from "../../lib/dashboard/actions";
+import { removeAttachmentAction, uploadWorkOrderAttachmentAction, type DashboardActionState } from "../../lib/dashboard/actions";
 import { attachmentTypeLabel, formatDateTime } from "../../lib/dashboard/formatters";
 import type { DashboardAttachment } from "../../lib/dashboard/types";
 import type { WorkOrderStatus } from "../../lib/types";
@@ -27,6 +27,7 @@ export function AttachmentsPanel({
   status: WorkOrderStatus;
 }) {
   const [state, formAction] = useActionState(uploadWorkOrderAttachmentAction, initialState);
+  const [removeState, removeAction] = useActionState(removeAttachmentAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const canUpload = MUTABLE_STATUSES.has(status);
@@ -37,6 +38,10 @@ export function AttachmentsPanel({
       router.refresh();
     }
   }, [router, state.ok, state.stamp]);
+
+  useEffect(() => {
+    if (removeState.ok) router.refresh();
+  }, [removeState.ok, removeState.stamp, router]);
 
   return (
     <Card>
@@ -137,7 +142,7 @@ export function AttachmentsPanel({
                   </video>
                 ) : null}
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {attachment.previewUrl && !isImageAttachment(attachment) ? (
                     <ButtonLink href={attachment.previewUrl} target="_blank" rel="noreferrer" aria-label="Apri allegato">
                       <Upload className="h-4 w-4" />
@@ -149,6 +154,21 @@ export function AttachmentsPanel({
                       <Download className="h-4 w-4" />
                       Scarica
                     </ButtonLink>
+                  ) : null}
+                  {canUpload ? (
+                    <form action={removeAction}>
+                      <input type="hidden" name="workOrderId" value={workOrderId} />
+                      <input type="hidden" name="attachmentId" value={attachment.id} />
+                      <button
+                        type="submit"
+                        className="flex h-9 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm text-zinc-500 transition-colors hover:border-danger/25 hover:bg-danger-soft hover:text-red-300"
+                        aria-label="Rimuovi allegato"
+                        onClick={(e) => { if (!confirm("Rimuovere questo allegato?")) e.preventDefault(); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Rimuovi
+                      </button>
+                    </form>
                   ) : null}
                 </div>
               </div>

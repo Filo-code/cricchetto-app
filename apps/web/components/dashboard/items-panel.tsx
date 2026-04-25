@@ -1,10 +1,10 @@
 "use client";
 
-import { PackagePlus, Wrench, X } from "lucide-react";
+import { PackagePlus, Trash2, Wrench, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { addWorkOrderLaborAction, addWorkOrderPartAction, type DashboardActionState } from "../../lib/dashboard/actions";
+import { addWorkOrderLaborAction, addWorkOrderPartAction, voidWorkOrderItemAction, type DashboardActionState } from "../../lib/dashboard/actions";
 import type { DashboardItem } from "../../lib/dashboard/types";
 import { formatCurrency, itemTypeLabel } from "../../lib/dashboard/formatters";
 import type { WorkOrderStatus } from "../../lib/types";
@@ -31,6 +31,7 @@ export function ItemsPanel({
   const [editor, setEditor] = useState<"part" | "labor" | null>(null);
   const [partState, partAction] = useActionState(addWorkOrderPartAction, initialState);
   const [laborState, laborAction] = useActionState(addWorkOrderLaborAction, initialState);
+  const [voidState, voidAction] = useActionState(voidWorkOrderItemAction, initialState);
   const partFormRef = useRef<HTMLFormElement>(null);
   const laborFormRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
@@ -52,6 +53,10 @@ export function ItemsPanel({
       router.refresh();
     }
   }, [laborState.ok, laborState.stamp, router]);
+
+  useEffect(() => {
+    if (voidState.ok) router.refresh();
+  }, [voidState.ok, voidState.stamp, router]);
 
   return (
     <Card>
@@ -140,6 +145,7 @@ export function ItemsPanel({
               <Th>Quantita</Th>
               <Th>Prezzo</Th>
               <Th>Totale</Th>
+              {canEdit ? <Th>{""}</Th> : null}
             </tr>
           </thead>
           <tbody>
@@ -152,6 +158,22 @@ export function ItemsPanel({
                 <Td className="tabular-nums">{item.quantity.toLocaleString("it-IT")}</Td>
                 <Td className="tabular-nums">{formatCurrency(item.unitPrice)}</Td>
                 <Td className="font-medium text-zinc-50 tabular-nums">{formatCurrency(item.rowTotal)}</Td>
+                {canEdit ? (
+                  <Td>
+                    <form action={voidAction}>
+                      <input type="hidden" name="workOrderId" value={workOrderId} />
+                      <input type="hidden" name="itemId" value={item.id} />
+                      <button
+                        type="submit"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-danger-soft hover:text-red-300"
+                        aria-label="Rimuovi voce"
+                        onClick={(e) => { if (!confirm("Rimuovere questa voce dalla scheda?")) e.preventDefault(); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </form>
+                  </Td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -162,6 +184,11 @@ export function ItemsPanel({
         </EmptyState>
       )}
 
+      {voidState.message ? (
+        <p className={voidState.ok ? "mt-4 rounded-xl border border-success/25 bg-success-soft px-3 py-2 text-sm text-emerald-200 animate-fade-in" : "mt-4 rounded-xl border border-danger/25 bg-danger-soft px-3 py-2 text-sm text-red-200 animate-fade-in"}>
+          {voidState.message}
+        </p>
+      ) : null}
       {!canEdit ? (
         <p className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-zinc-500">
           La scheda e in sola lettura. Ricambi e manodopera possono essere aggiunti solo finche la scheda resta operativa.

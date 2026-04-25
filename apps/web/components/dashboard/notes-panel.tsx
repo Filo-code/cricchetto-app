@@ -1,9 +1,9 @@
 "use client";
 
-import { StickyNote } from "lucide-react";
+import { StickyNote, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
-import { addWorkOrderNoteAction, type DashboardActionState } from "../../lib/dashboard/actions";
+import { addWorkOrderNoteAction, voidWorkOrderNoteAction, type DashboardActionState } from "../../lib/dashboard/actions";
 import { formatDateTime } from "../../lib/dashboard/formatters";
 import type { DashboardNote } from "../../lib/dashboard/types";
 import type { WorkOrderStatus } from "../../lib/types";
@@ -25,6 +25,7 @@ export function NotesPanel({
   status: WorkOrderStatus;
 }) {
   const [state, formAction] = useActionState(addWorkOrderNoteAction, initialState);
+  const [voidState, voidAction] = useActionState(voidWorkOrderNoteAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const canEdit = MUTABLE_STATUSES.includes(status);
@@ -35,6 +36,10 @@ export function NotesPanel({
       router.refresh();
     }
   }, [router, state.ok, state.stamp]);
+
+  useEffect(() => {
+    if (voidState.ok) router.refresh();
+  }, [voidState.ok, voidState.stamp, router]);
 
   return (
     <Card>
@@ -83,11 +88,27 @@ export function NotesPanel({
               className="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20"
             >
               <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-200">{note.note}</p>
-              <p className="mt-3 flex items-center gap-1.5 text-xs text-zinc-600">
-                <span className="tabular-nums">{formatDateTime(note.createdAt)}</span>
-                <span className="text-zinc-700">-</span>
-                <span>{note.createdBy ?? "Operatore"}</span>
-              </p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-xs text-zinc-600">
+                  <span className="tabular-nums">{formatDateTime(note.createdAt)}</span>
+                  <span className="text-zinc-700">-</span>
+                  <span>{note.createdBy ?? "Operatore"}</span>
+                </p>
+                {canEdit ? (
+                  <form action={voidAction}>
+                    <input type="hidden" name="workOrderId" value={workOrderId} />
+                    <input type="hidden" name="noteId" value={note.id} />
+                    <button
+                      type="submit"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-600 opacity-0 transition-all hover:bg-danger-soft hover:text-red-300 group-hover:opacity-100"
+                      aria-label="Rimuovi nota"
+                      onClick={(e) => { if (!confirm("Rimuovere questa nota?")) e.preventDefault(); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
+                ) : null}
+              </div>
             </article>
           ))
         ) : (

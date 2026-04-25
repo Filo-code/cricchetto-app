@@ -1,7 +1,8 @@
-import { CarFront, Gauge, Hash, Phone, ReceiptText, UserRound } from "lucide-react";
+import { CarFront, Gauge, Hash, History, Phone, ReceiptText, UserRound } from "lucide-react";
 import type { DashboardWorkOrderDetail } from "../../lib/dashboard/types";
 import { formatCurrency, formatDate, formatDateTime } from "../../lib/dashboard/formatters";
 import { Badge } from "../ui/badge";
+import { ButtonLink } from "../ui/button";
 import { Card, CardHeader } from "../ui/card";
 import { WorkOrderStatusBadge } from "./work-order-status-badge";
 
@@ -10,6 +11,12 @@ export function WorkOrderDetailPanel({ detail }: { detail: DashboardWorkOrderDet
   return (
     <div className="grid gap-5 lg:grid-cols-[1.5fr,0.9fr]">
       <Card>
+        <div className="mb-4 flex justify-end">
+          <ButtonLink href={`/dashboard/vehicles/${encodeURIComponent(workOrder.plate)}`} aria-label="Storico veicolo">
+            <History className="h-4 w-4" />
+            Storico auto
+          </ButtonLink>
+        </div>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">

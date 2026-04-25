@@ -624,6 +624,7 @@ async function readAttachments(workshopId: string, workOrderId: string): Promise
     .select("id,attachment_type,storage_bucket,storage_path,mime_type,filename,created_by,captured_at,created_at,metadata")
     .eq("workshop_id", workshopId)
     .eq("work_order_id", workOrderId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {

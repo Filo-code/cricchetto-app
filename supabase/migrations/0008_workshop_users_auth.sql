@@ -29,15 +29,7 @@ create table password_reset_tokens (
 
 create index idx_prt_user on password_reset_tokens (user_id);
 
--- updated_at trigger for workshop_users
-create or replace function set_updated_at()
-returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
+-- updated_at trigger for workshop_users (reuses set_updated_at_only from 0001)
 create trigger trg_workshop_users_updated_at
   before update on workshop_users
-  for each row execute function set_updated_at();
+  for each row execute function set_updated_at_only();

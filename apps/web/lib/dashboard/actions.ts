@@ -192,6 +192,45 @@ export async function generateEstimateAction(_state: DashboardActionState, formD
   }
 }
 
+export async function voidWorkOrderItemAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const workOrderId = textValue(formData, "workOrderId");
+  const itemId = textValue(formData, "itemId");
+  if (!workOrderId || !itemId) return failureState("Voce non valida.");
+  try {
+    await dashboardPost(`/api/work-orders/${encodeURIComponent(workOrderId)}/items/${encodeURIComponent(itemId)}`, { actorRef: "dashboard" }, "DELETE");
+    revalidateWorkOrderPaths(workOrderId);
+    return successState("Voce rimossa dalla scheda.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function voidWorkOrderNoteAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const workOrderId = textValue(formData, "workOrderId");
+  const noteId = textValue(formData, "noteId");
+  if (!workOrderId || !noteId) return failureState("Nota non valida.");
+  try {
+    await dashboardPost(`/api/work-orders/${encodeURIComponent(workOrderId)}/notes/${encodeURIComponent(noteId)}`, { actorRef: "dashboard" }, "DELETE");
+    revalidateWorkOrderPaths(workOrderId);
+    return successState("Nota rimossa dalla scheda.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function removeAttachmentAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const workOrderId = textValue(formData, "workOrderId");
+  const attachmentId = textValue(formData, "attachmentId");
+  if (!workOrderId || !attachmentId) return failureState("Allegato non valido.");
+  try {
+    await dashboardPost(`/api/work-orders/${encodeURIComponent(workOrderId)}/attachments/${encodeURIComponent(attachmentId)}`, { actorRef: "dashboard" }, "DELETE");
+    revalidateWorkOrderPaths(workOrderId);
+    return successState("Allegato rimosso dalla scheda.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function uploadWorkOrderAttachmentAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
   const workOrderId = textValue(formData, "workOrderId");
   const file = formData.get("file");

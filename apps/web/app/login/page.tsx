@@ -26,8 +26,8 @@ export default function LoginPage() {
 
         <form action={formAction} className="space-y-4">
           <label className="block">
-            <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Email</span>
-            <Input name="email" type="email" autoComplete="email" required />
+            <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Email / utente</span>
+            <Input name="email" type="text" autoComplete="username" required />
           </label>
           <label className="block">
             <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Password</span>

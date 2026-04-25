@@ -44,5 +44,7 @@ export function splitCommandText(text: string): string[] {
 
 export function commandKeyword(input: string): string {
   const keyword = input.trim().toUpperCase();
-  return keyword === "RICERCA" ? "CERCA" : keyword;
+  if (keyword === "RICERCA") return "CERCA";
+  if (keyword === "AIUTO" || keyword === "HELP" || keyword === "COMANDI") return "COMANDO";
+  return keyword;
 }
