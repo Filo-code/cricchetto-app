@@ -1,0 +1,74 @@
+node_modules/
+.next/
+apps/web/.next/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+.cache/
+
+
+
+# dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# build/cache
+dist/
+build/
+.cache/
+
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# local tool config
+.claude/settings.local.json
+
+# Next / build
+.next/
+apps/web/.next/
+out/
+dist/
+build/
+.cache/
+
+# dependencies
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Supabase local/cache
+supabase/.temp/
+supabase/**/.temp/
+n8n/supabase/.temp/
+
+# OS/logs
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

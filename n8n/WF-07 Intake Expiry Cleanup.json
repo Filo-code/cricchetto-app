@@ -1,0 +1,73 @@
+{
+  "name": "WF-07 Intake Expiry Cleanup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "be85a846-63a6-44bb-9401-6cd87e8aa9a8",
+      "name": "Hourly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/intake/expire-cleanup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a9ea1ec6-1f5e-4a60-85ca-e4e2c8d938d7",
+      "name": "Expire Old Intakes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Hourly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Expire Old Intakes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8453b9a5-4cbf-41ff-80ea-d23fcba88000",
+  "meta": {
+    "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
+  },
+  "id": "9eZG6HAXilH9x2Mv",
+  "tags": []
+}

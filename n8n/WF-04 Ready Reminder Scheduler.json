@@ -1,0 +1,138 @@
+{
+  "name": "WF-04 Ready Reminder Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "5add10eb-8184-4bd4-8902-e953629154fd",
+      "name": "Hourly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/reminders/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ limit: 20, reminderTypes: ['ready_not_collected'] }) }}",
+        "options": {}
+      },
+      "id": "a4f3ac5d-d9ec-47cf-9626-449f6bbc6231",
+      "name": "Queue Due Ready Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
+      },
+      "id": "6d296d2a-02a7-48f2-9a79-a09274bbc206",
+      "name": "Extract Queued Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_N8N_PUBLIC_BASE_URL}}/webhook/mechanic/outbound-dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-dispatch-secret",
+              "value": "={{$env.Criccheto_N8N_DISPATCH_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messageLogId: String($json.messageLogId),\n  channel: $json.channel,\n  provider: $json.provider,\n  senderIdentifier: $json.senderIdentifier ? String($json.senderIdentifier) : undefined,\n  recipientIdentifier: String($json.recipientIdentifier),\n  text: String($json.text || ''),\n  relatedReminderId: String($json.relatedReminderId)\n}) }}",
+        "options": {}
+      },
+      "id": "0350fe72-2b0e-45d0-b282-be089111a256",
+      "name": "Dispatch Outbound",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Hourly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Queue Due Ready Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Due Ready Reminders": {
+      "main": [
+        [
+          {
+            "node": "Extract Queued Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Queued Messages": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Outbound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6addd572-a3b8-40a2-96b3-747efa8c1922",
+  "meta": {
+    "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
+  },
+  "id": "hQGo1CswC3ANZSjg",
+  "tags": []
+}

@@ -1,0 +1,336 @@
+{
+  "name": "WF-03 Outbound Message Dispatch",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mechanic/outbound-dispatch",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "06f780be-ef72-4dea-8d21-341f6b12e3f4",
+      "name": "Outbound Dispatch Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        128
+      ],
+      "webhookId": "aeb07a38-e15b-4b75-a3b0-71e227d99b6e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const envelope = $json;\nconst input = envelope.body || envelope;\nconst headers = envelope.headers || {};\nfunction header(name) {\n  const target = name.toLowerCase();\n  for (const [key, value] of Object.entries(headers)) {\n    if (String(key).toLowerCase() === target) return value;\n  }\n  return undefined;\n}\nif (!$env.Criccheto_N8N_DISPATCH_SECRET) throw new Error('Criccheto_N8N_DISPATCH_SECRET is required');\nif (header('x-dispatch-secret') !== $env.Criccheto_N8N_DISPATCH_SECRET) throw new Error('Invalid outbound dispatch secret');\nconst required = ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text'];\nfor (const field of required) {\n  if (!input[field]) throw new Error(`Missing outbound field: ${field}`);\n}\nif (!['whatsapp', 'telegram_test'].includes(input.channel)) throw new Error(`Unsupported outbound channel: ${input.channel}`);\nif (input.channel === 'whatsapp' && input.provider !== ($env.Criccheto_WHATSAPP_PROVIDER || 'meta_whatsapp_cloud_api')) {\n  throw new Error(`Unsupported WhatsApp provider: ${input.provider}`);\n}\nif (input.channel === 'telegram_test' && input.provider !== 'telegram_bot_api') {\n  throw new Error(`Unsupported Telegram provider: ${input.provider}`);\n}\nreturn [{ json: input }];"
+      },
+      "id": "fd9124f6-4dff-43f1-b247-6d8661e92c7e",
+      "name": "Validate Dispatch Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/messages/send-outbound-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messageLogId: String($json.messageLogId),\n  providerStatus: 'sending'\n}) }}",
+        "options": {}
+      },
+      "id": "941fcadf-0be4-4b84-89c1-64d7d7ef30b1",
+      "name": "Mark Sending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -480,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ String($('Validate Dispatch Payload').item.json.provider || '').trim() }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "meta_whatsapp_cloud_api"
+            },
+            {
+              "value2": "telegram_bot_api",
+              "output": 1
+            }
+          ]
+        }
+      },
+      "id": "6d28645d-fa04-4b58-9f08-30edcbbaedd8",
+      "name": "Switch Channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_WHATSAPP_GRAPH_API_BASE_URL}}/{{$env.Criccheto_WHATSAPP_PHONE_NUMBER_ID}}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.Criccheto_WHATSAPP_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  to: String($('Validate Dispatch Payload').item.json.recipientIdentifier).replace(/[^\\d+]/g, ''),\n  type: 'text',\n  text: { preview_url: false, body: String($('Validate Dispatch Payload').item.json.text || '').trim() }\n}) }}",
+        "options": {}
+      },
+      "id": "c0fe1f0e-df7b-4fcb-b8c2-6f4c706ff942",
+      "name": "Send WhatsApp Cloud API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Validate Dispatch Payload').item.json;\nconst response = $json;\nconst providerMessageId = response.messages?.[0]?.id;\nconst failed = Boolean(response.error) || !providerMessageId;\nreturn [{ json: {\n  messageLogId: original.messageLogId,\n  providerStatus: failed ? 'failed' : 'accepted',\n  providerMessageId: failed ? undefined : providerMessageId,\n  errorMessage: failed ? JSON.stringify(response.error || response) : undefined\n}}];"
+      },
+      "id": "5ffee063-3e9a-44a2-9521-26e7a849cb2d",
+      "name": "Build WhatsApp Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env.Criccheto_TELEGRAM_BOT_TOKEN}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ String($('Validate Dispatch Payload').item.json.recipientIdentifier).trim() }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ String($('Validate Dispatch Payload').item.json.text || '').trim() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dce65934-05bf-4b36-b007-16bc7e6dbbd4",
+      "name": "Send Telegram Bot API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        240
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Validate Dispatch Payload').item.json;\nconst response = $json;\nconst providerMessageId = response.result?.message_id ? String(response.result.message_id) : undefined;\nconst failed = response.ok !== true || Boolean(response.error) || !providerMessageId;\nreturn [{ json: {\n  messageLogId: original.messageLogId,\n  providerStatus: failed ? 'failed' : 'accepted',\n  providerMessageId: failed ? undefined : providerMessageId,\n  errorMessage: failed ? JSON.stringify(response.description || response.error || response) : undefined\n}}];"
+      },
+      "id": "7a05f5d5-ac77-4529-abaf-8f67d1dc7686",
+      "name": "Build Telegram Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/messages/send-outbound-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.providerStatus === 'accepted' ? {\n  messageLogId: String($json.messageLogId),\n  providerStatus: 'accepted',\n  providerMessageId: String($json.providerMessageId)\n} : {\n  messageLogId: String($json.messageLogId),\n  providerStatus: 'failed',\n  errorMessage: String($json.errorMessage || 'Provider send failed')\n}) }}",
+        "options": {}
+      },
+      "id": "2987926b-b030-42bb-8341-227b490b676c",
+      "name": "Report Provider Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        480,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "af918806-2828-4e35-b097-80aabfcafed7",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        720,
+        128
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Outbound Dispatch Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Dispatch Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Dispatch Payload": {
+      "main": [
+        [
+          {
+            "node": "Mark Sending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sending": {
+      "main": [
+        [
+          {
+            "node": "Switch Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Channel": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Cloud API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Bot API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Cloud API": {
+      "main": [
+        [
+          {
+            "node": "Build WhatsApp Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build WhatsApp Result": {
+      "main": [
+        [
+          {
+            "node": "Report Provider Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Bot API": {
+      "main": [
+        [
+          {
+            "node": "Build Telegram Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Telegram Result": {
+      "main": [
+        [
+          {
+            "node": "Report Provider Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Provider Result": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "def218e0-a764-4eb2-83ce-c0ab0abd8f0b",
+  "meta": {
+    "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
+  },
+  "id": "kT14zFm6tshW4TbY",
+  "tags": []
+}

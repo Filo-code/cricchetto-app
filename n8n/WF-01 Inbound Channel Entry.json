@@ -1,0 +1,305 @@
+{
+  "name": "WF-01 Inbound Channel Entry",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "mechanic/whatsapp/verify",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5fadfee3-25f1-4882-b782-150e0440ebe5",
+      "name": "WhatsApp Verify Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6bd597c3-a8a5-4978-a014-b07b46ce2065"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $json.query || {};\nconst token = query['hub.verify_token'];\nconst challenge = query['hub.challenge'];\nif (!challenge || token !== $env.Criccheto_WHATSAPP_VERIFY_TOKEN) {\n  throw new Error('Invalid WhatsApp verification request');\n}\nreturn [{ json: { challenge } }];"
+      },
+      "id": "4a7bca8b-7c80-4abc-808b-d4c144bf8f25",
+      "name": "Verify WhatsApp Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.challenge}}",
+        "options": {}
+      },
+      "id": "85d54c06-7f48-464a-a39d-c460d0a3061c",
+      "name": "Respond WhatsApp Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mechanic/inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b954c493-96c6-4644-9db9-9303346583b1",
+      "name": "Inbound Provider Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ],
+      "webhookId": "de93be83-35be-46d5-b6e6-33ed5dae1072"
+    },
+    {
+      "parameters": {
+        "jsCode": "const envelope = $json;\nconst body = envelope.body || envelope;\nconst headers = envelope.headers || {};\n\nfunction header(name) {\n  const target = name.toLowerCase();\n  for (const [key, value] of Object.entries(headers)) {\n    if (String(key).toLowerCase() === target) return value;\n  }\n  return undefined;\n}\n\nfunction ignored(reason) {\n  return { ignored: true, reason };\n}\n\nfunction safeString(value) {\n  return typeof value === 'string' ? value : '';\n}\n\nfunction safeNumber(value) {\n  if (typeof value === 'number' && Number.isFinite(value)) return value;\n  if (typeof value === 'string' && value.trim()) {\n    const parsed = Number(value);\n    return Number.isFinite(parsed) ? parsed : null;\n  }\n  return null;\n}\n\nfunction normalizeWhatsApp(payload) {\n  if (payload.object !== 'whatsapp_business_account') return null;\n  if (header('x-upstream-verified-meta-signature') !== '1') {\n    throw new Error('Missing upstream WhatsApp signature verification');\n  }\n  const value = payload.entry?.[0]?.changes?.[0]?.value;\n  if (!value) return ignored('unsupported_whatsapp_payload');\n  if (Array.isArray(value.statuses) && value.statuses.length > 0 && !value.messages?.length) {\n    return ignored('whatsapp_status_event');\n  }\n  const message = value.messages?.[0];\n  if (!message) return ignored('unsupported_whatsapp_payload');\n\n  const attachments = [];\n  let text = '';\n\n  if (message.type === 'text' && message.text?.body) {\n    text = message.text.body;\n  } else if (message.type === 'image' && message.image?.id) {\n    text = safeString(message.image.caption);\n    attachments.push({\n      attachmentType: 'photo',\n      providerMediaId: message.image.id,\n      mimeType: message.image.mime_type || null,\n      fileSize: safeNumber(message.image.file_size),\n      caption: safeString(message.image.caption) || null,\n    });\n  } else if (message.type === 'document' && message.document?.id) {\n    text = safeString(message.document.caption);\n    attachments.push({\n      attachmentType: 'document',\n      providerMediaId: message.document.id,\n      filename: message.document.filename || null,\n      mimeType: message.document.mime_type || null,\n      fileSize: safeNumber(message.document.file_size),\n      caption: safeString(message.document.caption) || null,\n    });\n  } else if (message.type === 'audio' && message.audio?.id) {\n    attachments.push({\n      attachmentType: 'audio',\n      providerMediaId: message.audio.id,\n      mimeType: message.audio.mime_type || null,\n      fileSize: safeNumber(message.audio.file_size),\n    });\n  } else if (message.type === 'video' && message.video?.id) {\n    text = safeString(message.video.caption);\n    attachments.push({\n      attachmentType: 'other',\n      providerMediaId: message.video.id,\n      mimeType: message.video.mime_type || null,\n      fileSize: safeNumber(message.video.file_size),\n      caption: safeString(message.video.caption) || null,\n    });\n  } else {\n    return ignored('unsupported_whatsapp_message_type');\n  }\n\n  return {\n    channel: 'whatsapp',\n    provider: $env.Criccheto_WHATSAPP_PROVIDER || 'meta_whatsapp_cloud_api',\n    providerMessageId: message.id,\n    senderIdentifier: message.from,\n    recipientIdentifier: value.metadata?.phone_number_id || $env.Criccheto_WHATSAPP_PHONE_NUMBER_ID,\n    text,\n    attachments,\n    rawPayload: payload\n  };\n}\n\nfunction normalizeTelegram(payload) {\n  const secret = header('x-telegram-bot-api-secret-token');\n  if ($env.Criccheto_TELEGRAM_WEBHOOK_SECRET && secret !== $env.Criccheto_TELEGRAM_WEBHOOK_SECRET) {\n    throw new Error('Invalid Telegram webhook secret');\n  }\n  const message = payload.message || payload.edited_message;\n  if (message) {\n    const attachments = [];\n    let text = safeString(message.text || message.caption);\n\n    if (Array.isArray(message.photo) && message.photo.length > 0) {\n      const photo = [...message.photo]\n        .filter((entry) => entry?.file_id)\n        .sort((left, right) => Number(right?.file_size || 0) - Number(left?.file_size || 0))[0];\n      if (photo?.file_id) {\n        attachments.push({\n          attachmentType: 'photo',\n          providerFileId: photo.file_id,\n          providerFileUniqueId: photo.file_unique_id || null,\n          mimeType: 'image/jpeg',\n          fileSize: safeNumber(photo.file_size),\n          caption: safeString(message.caption) || null,\n        });\n      }\n    } else if (message.document?.file_id) {\n      attachments.push({\n        attachmentType: 'document',\n        providerFileId: message.document.file_id,\n        providerFileUniqueId: message.document.file_unique_id || null,\n        filename: message.document.file_name || null,\n        mimeType: message.document.mime_type || null,\n        fileSize: safeNumber(message.document.file_size),\n        caption: safeString(message.caption) || null,\n      });\n    } else if (message.audio?.file_id) {\n      attachments.push({\n        attachmentType: 'audio',\n        providerFileId: message.audio.file_id,\n        providerFileUniqueId: message.audio.file_unique_id || null,\n        filename: message.audio.file_name || null,\n        mimeType: message.audio.mime_type || null,\n        fileSize: safeNumber(message.audio.file_size),\n        caption: safeString(message.caption) || null,\n      });\n    } else if (message.voice?.file_id) {\n      attachments.push({\n        attachmentType: 'audio',\n        providerFileId: message.voice.file_id,\n        providerFileUniqueId: message.voice.file_unique_id || null,\n        filename: 'voice-message.ogg',\n        mimeType: message.voice.mime_type || 'audio/ogg',\n        fileSize: safeNumber(message.voice.file_size),\n        caption: safeString(message.caption) || null,\n      });\n    } else if (message.video?.file_id) {\n      attachments.push({\n        attachmentType: 'other',\n        providerFileId: message.video.file_id,\n        providerFileUniqueId: message.video.file_unique_id || null,\n        filename: message.video.file_name || 'telegram-video.mp4',\n        mimeType: message.video.mime_type || 'video/mp4',\n        fileSize: safeNumber(message.video.file_size),\n        caption: safeString(message.caption) || null,\n      });\n    } else if (!text) {\n      return ignored('unsupported_telegram_message_type');\n    }\n\n    return {\n      channel: 'telegram_test',\n      provider: 'telegram_bot_api',\n      providerMessageId: String(message.message_id),\n      senderIdentifier: String(message.chat?.id),\n      recipientIdentifier: payload.recipient || payload.bot_username || $env.Criccheto_TELEGRAM_BOT_IDENTIFIER || 'Cricchetto_bot',\n      text,\n      attachments,\n      rawPayload: payload\n    };\n  }\n  if (payload.callback_query) {\n    return ignored('unsupported_telegram_callback');\n  }\n  if (payload.update_id) return ignored('unsupported_telegram_update');\n  return null;\n}\n\nconst normalized = normalizeWhatsApp(body) || normalizeTelegram(body);\nif (!normalized) throw new Error('Unsupported inbound provider payload');\nif (normalized.ignored) return [{ json: normalized }];\nif (!normalized.providerMessageId || !normalized.senderIdentifier || !normalized.recipientIdentifier || !(normalized.text || normalized.attachments?.length)) {\n  throw new Error('Normalized inbound payload is incomplete');\n}\nreturn [{ json: normalized }];"
+      },
+      "id": "2058e261-a481-4702-b275-fefe6dd3f26e",
+      "name": "Normalize Provider Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.ignored === true}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "72d711d2-c72a-420f-802d-1169045527d7",
+      "name": "Is Ignored Event",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        480,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "4ff5911e-5a5c-4ee3-94ff-9eea276e5976",
+      "name": "Respond Ignored Event",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        720,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/messages/process-inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  channel: $json.channel,\n  provider: $json.provider,\n  providerMessageId: String($json.providerMessageId),\n  senderIdentifier: String($json.senderIdentifier),\n  recipientIdentifier: String($json.recipientIdentifier),\n  text: $json.text || '',\n  attachments: $json.attachments || [],\n  rawPayload: $json.rawPayload\n}) }}",
+        "options": {}
+      },
+      "id": "3505613d-6e2b-4ac3-8edc-0d7cfaaed7c4",
+      "name": "Backend Process Inbound",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $json.outboundMessages || [];\nif (!Array.isArray(messages)) throw new Error('Backend process-inbound response must include outboundMessages array');\nreturn messages.map((message) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text']) {\n    if (!message[field]) throw new Error(`Queued outbound message missing ${field}`);\n  }\n  return { json: message };\n});"
+      },
+      "id": "dc7e24a5-580f-473b-a908-e37699e225e7",
+      "name": "Extract Outbound Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_N8N_PUBLIC_BASE_URL}}/webhook/mechanic/outbound-dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-dispatch-secret",
+              "value": "={{$env.Criccheto_N8N_DISPATCH_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messageLogId: String($json.messageLogId),\n  channel: $json.channel,\n  provider: $json.provider,\n  senderIdentifier: $json.senderIdentifier ? String($json.senderIdentifier) : undefined,\n  recipientIdentifier: String($json.recipientIdentifier),\n  text: String($json.text || ''),\n  relatedWorkOrderId: $json.relatedWorkOrderId,\n  relatedReminderId: $json.relatedReminderId,\n  relatedDocumentId: $json.relatedDocumentId\n}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "6befa715-933c-4250-b54e-79453a41dbb9",
+      "name": "Dispatch Outbound",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1200,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "9e2983f6-607e-448b-915d-81263ca3cac1",
+      "name": "Respond Backend Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        144
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Verify Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify WhatsApp Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify WhatsApp Token": {
+      "main": [
+        [
+          {
+            "node": "Respond WhatsApp Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inbound Provider Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Provider Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Provider Payload": {
+      "main": [
+        [
+          {
+            "node": "Is Ignored Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Ignored Event": {
+      "main": [
+        [
+          {
+            "node": "Respond Ignored Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Backend Process Inbound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backend Process Inbound": {
+      "main": [
+        [
+          {
+            "node": "Respond Backend Result",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract Outbound Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Outbound Messages": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Outbound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "25b600c9-e2a4-4273-8c6c-c1357125f1b5",
+  "meta": {
+    "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
+  },
+  "id": "kWHEmXWTW7touTrW",
+  "tags": []
+}

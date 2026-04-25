@@ -1,0 +1,76 @@
+{
+  "name": "WF-06 Document Worker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "11ce6b0f-fe29-4fcf-b8f1-d764efe5cc4f",
+      "name": "5 Minute Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/documents/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ limit: 10 }) }}",
+        "options": {}
+      },
+      "id": "68f182b8-9c1c-4eae-8d04-28954e7ff10b",
+      "name": "Run Backend Document Worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "5 Minute Schedule": {
+      "main": [
+        [
+          {
+            "node": "Run Backend Document Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "11150b2f-6290-439e-8201-5f719bcc8fa4",
+  "meta": {
+    "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
+  },
+  "id": "9TclBbDlVYoRVFgk",
+  "tags": []
+}

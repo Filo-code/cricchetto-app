@@ -1,0 +1,139 @@
+{
+  "name": "WF-05 Revision Reminder Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "5e524ebd-ed75-4040-93c6-d140058cc7fc",
+      "name": "6 Hour Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/reminders/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{$env.Criccheto_INTERNAL_API_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ limit: 20, reminderTypes: ['revision_due_35d', 'revision_due_30d', 'revision_due_7d', 'revision_due_1d'] }) }}",
+        "options": {}
+      },
+      "id": "6c82b9cd-cc6b-493b-b1b9-f0bfc5ead0c4",
+      "name": "Queue Due Revision Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
+      },
+      "id": "72fa43ec-20f9-463e-8bbe-22603eba6e2b",
+      "name": "Extract Queued Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.Criccheto_N8N_PUBLIC_BASE_URL}}/webhook/mechanic/outbound-dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-dispatch-secret",
+              "value": "={{$env.Criccheto_N8N_DISPATCH_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messageLogId: String($json.messageLogId),\n  channel: $json.channel,\n  provider: $json.provider,\n  senderIdentifier: $json.senderIdentifier ? String($json.senderIdentifier) : undefined,\n  recipientIdentifier: String($json.recipientIdentifier),\n  text: String($json.text || ''),\n  relatedReminderId: String($json.relatedReminderId)\n}) }}",
+        "options": {}
+      },
+      "id": "ca11c294-f4d2-413d-ae59-2fba1cd5609c",
+      "name": "Dispatch Outbound",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "6 Hour Schedule": {
+      "main": [
+        [
+          {
+            "node": "Queue Due Revision Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Due Revision Reminders": {
+      "main": [
+        [
+          {
+            "node": "Extract Queued Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Queued Messages": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Outbound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c93a6dcf-f05b-45eb-8b64-ecf9d18c7719",
+  "meta": {
+    "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
+  },
+  "id": "JzAa6pCAnyBhts7Y",
+  "tags": []
+}
