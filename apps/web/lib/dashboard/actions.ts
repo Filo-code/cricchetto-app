@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { uploadDashboardAttachment } from "../attachments";
 import { readWorkOrderForMutation, getWorkshopSettings, uploadWorkshopLogo } from "./read";
+import { uploadWorkshopDocumentTemplate, deactivateWorkshopDocumentTemplate } from "./document-templates";
 import { DashboardApiError, dashboardPost } from "./api-client";
 
 export interface DashboardActionState {
@@ -375,6 +376,39 @@ export async function uploadWorkOrderAttachmentAction(_state: DashboardActionSta
     });
     revalidateWorkOrderPaths(workOrderId);
     return successState("Allegato caricato sulla scheda.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function uploadWorkshopDocumentTemplateAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const documentType = textValue(formData, "documentType");
+  const file = formData.get("file");
+
+  if (!documentType) return failureState("Tipo documento mancante.");
+  if (!(file instanceof File) || file.size <= 0) return failureState("Seleziona un file PDF.");
+  if (file.type !== "application/pdf") return failureState("Il template deve essere un file PDF.");
+  if (file.size > 5 * 1024 * 1024) return failureState("Il template non può superare i 5 MB.");
+
+  try {
+    const settings = await getWorkshopSettings();
+    await uploadWorkshopDocumentTemplate({ workshopId: settings.id, documentType, file, actorRef: "dashboard" });
+    revalidatePath("/dashboard/settings");
+    return successState("Caricato, non ancora applicato automaticamente ai PDF.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function deactivateWorkshopDocumentTemplateAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const templateId = textValue(formData, "templateId");
+  if (!templateId) return failureState("Template non valido.");
+
+  try {
+    const settings = await getWorkshopSettings();
+    await deactivateWorkshopDocumentTemplate({ workshopId: settings.id, templateId });
+    revalidatePath("/dashboard/settings");
+    return successState("Template disattivato.");
   } catch (error) {
     return errorState(error);
   }
