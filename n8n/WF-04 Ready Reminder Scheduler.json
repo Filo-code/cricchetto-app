@@ -11,7 +11,7 @@
           ]
         }
       },
-      "id": "5add10eb-8184-4bd4-8902-e953629154fd",
+      "id": "5add10eb-8184-4bd4-8902-e953619154fd",
       "name": "Hourly Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
@@ -49,7 +49,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
+        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nconsole.log('[WF-04] ready reminder batch', { scanned: $json.scanned ?? '?', queued: queued.length, skipped: $json.skipped ?? '?', failed: $json.failed ?? '?' });\nif ($json.failed > 0) console.warn('[WF-04] some reminders failed to queue', { failed: $json.failed });\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
       },
       "id": "6d296d2a-02a7-48f2-9a79-a09274bbc206",
       "name": "Extract Queued Messages",

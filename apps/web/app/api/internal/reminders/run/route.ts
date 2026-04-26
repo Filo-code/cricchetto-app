@@ -25,7 +25,13 @@ export async function POST(request: Request): Promise<Response> {
       limit: (limit as number | undefined) ?? 20,
       reminderTypes: reminderTypes as (typeof REMINDER_TYPES)[number][] | undefined,
     });
-    return Response.json({ ok: true, ...result });
+    return Response.json({
+      ok: true,
+      scanned: result.scanned,
+      skipped: result.skipped,
+      failed: result.failed,
+      queued: result.queued,
+    });
   } catch (error) {
     const status = error instanceof AppError ? error.statusCode : 500;
     return Response.json({ ok: false, error: getErrorMessage(error) }, { status });

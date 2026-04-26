@@ -50,7 +50,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
+        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nconsole.log('[WF-05] revision reminder batch', { scanned: $json.scanned ?? '?', queued: queued.length, skipped: $json.skipped ?? '?', failed: $json.failed ?? '?' });\nif ($json.failed > 0) console.warn('[WF-05] some reminders failed to queue', { failed: $json.failed });\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
       },
       "id": "72fa43ec-20f9-463e-8bbe-22603eba6e2b",
       "name": "Extract Queued Messages",

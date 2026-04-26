@@ -149,17 +149,12 @@ export async function updateWorkOrderRevisionAction(_state: DashboardActionState
   const workOrderId = textValue(formData, "workOrderId");
   const vehicleId = textValue(formData, "vehicleId");
   const revisionDueDate = textValue(formData, "revisionDueDate");
-  const revisionAppointmentDate = textValue(formData, "revisionAppointmentDate");
-  const revisionAppointmentTime = textValue(formData, "revisionAppointmentTime");
   const revisionReminderEnabled = formData.get("revisionReminderEnabled") === "on";
   const rawChannel = textValue(formData, "revisionReminderChannel");
   const revisionReminderChannel = rawChannel === "whatsapp" || rawChannel === "telegram_test" ? rawChannel : null;
 
   if (!revisionDueDate) {
     return failureState("Inserisci una data revisione valida.");
-  }
-  if ((revisionAppointmentDate && !revisionAppointmentTime) || (!revisionAppointmentDate && revisionAppointmentTime)) {
-    return failureState("Per fissare l'appuntamento compila sia data sia ora.");
   }
 
   try {
@@ -170,13 +165,38 @@ export async function updateWorkOrderRevisionAction(_state: DashboardActionState
         revisionDueDate,
         revisionReminderEnabled,
         revisionReminderChannel,
+      },
+      "PATCH",
+    );
+    revalidateWorkOrderPaths(workOrderId || undefined);
+    return successState("Scadenza aggiornata.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateRevisionAppointmentAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const workOrderId = textValue(formData, "workOrderId");
+  const vehicleId = textValue(formData, "vehicleId");
+  const revisionAppointmentDate = textValue(formData, "revisionAppointmentDate");
+  const revisionAppointmentTime = textValue(formData, "revisionAppointmentTime");
+
+  if ((revisionAppointmentDate && !revisionAppointmentTime) || (!revisionAppointmentDate && revisionAppointmentTime)) {
+    return failureState("Per fissare l'appuntamento compila sia data sia ora.");
+  }
+
+  try {
+    await dashboardPost(
+      `/api/vehicles/${encodeURIComponent(vehicleId)}/revision/appointment`,
+      {
+        actorRef: "dashboard",
         revisionAppointmentDate: revisionAppointmentDate || null,
         revisionAppointmentTime: revisionAppointmentTime || null,
       },
       "PATCH",
     );
     revalidateWorkOrderPaths(workOrderId || undefined);
-    return successState("Revisione aggiornata.");
+    return successState("Appuntamento aggiornato.");
   } catch (error) {
     return errorState(error);
   }

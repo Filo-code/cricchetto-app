@@ -134,6 +134,41 @@ export async function updateRevisionDueDate(input: RevisionUpdateInput): Promise
   });
 }
 
+export interface RevisionAppointmentInput {
+  workshopId: string;
+  vehicleId: string;
+  revisionAppointmentDate: string | null;
+  revisionAppointmentTime: string | null;
+  createdBy?: string;
+}
+
+export async function updateRevisionAppointment(input: RevisionAppointmentInput): Promise<void> {
+  const { error: updateError } = await supabaseServer
+    .from("vehicles")
+    .update({
+      revision_appointment_date: input.revisionAppointmentDate,
+      revision_appointment_time: input.revisionAppointmentTime,
+    } as any)
+    .eq("workshop_id", input.workshopId)
+    .eq("id", input.vehicleId);
+
+  if (updateError) {
+    throw new Error(`Failed to update revision appointment: ${updateError.message}`);
+  }
+
+  const { error: eventError } = await supabaseServer.from("vehicle_revision_events").insert({
+    workshop_id: input.workshopId,
+    vehicle_id: input.vehicleId,
+    event_type: "revision_appointment_updated",
+    source: "dashboard",
+    created_by: input.createdBy ?? null,
+  } as any);
+
+  if (eventError) {
+    throw new Error(`Failed to write revision appointment event: ${eventError.message}`);
+  }
+}
+
 export async function listRevisionDue(workshopId: string): Promise<CommandExecutionResult> {
   const settings = await readWorkshop(workshopId);
   const today = getLocalDate(settings.timezone);

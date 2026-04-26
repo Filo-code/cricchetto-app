@@ -40,9 +40,16 @@ interface QueuedReminderMessage {
 
 export interface ReminderRunResult {
   scanned: number;
-  queued: number;
   skipped: number;
   failed: number;
+  queued: Array<{
+    messageLogId: string;
+    channel: Channel;
+    provider: string;
+    recipientIdentifier: string;
+    text: string;
+    relatedReminderId: string;
+  }>;
 }
 
 export interface ReminderScheduleInput {
@@ -178,7 +185,7 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
   }
 
   const rows = (data ?? []) as DueReminderRow[];
-  let queued = 0;
+  const queuedMessages: ReminderRunResult["queued"] = [];
   let skipped = 0;
   let failed = 0;
 
@@ -210,6 +217,7 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
       continue;
     }
 
+    const queuedForReminder: ReminderRunResult["queued"] = [];
     let queuedCount = 0;
     for (const target of targets) {
       const outbound = await queueOutbound({
@@ -235,6 +243,14 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
         continue;
       }
       queuedCount += 1;
+      queuedForReminder.push({
+        messageLogId: outbound.messageLogId,
+        channel: outbound.channel,
+        provider: outbound.provider,
+        recipientIdentifier: outbound.recipientIdentifier,
+        text: outbound.text ?? "",
+        relatedReminderId: reminder.id,
+      });
       targetMetadata[target.targetKey] = {
         ...(targetMetadata[target.targetKey] ?? {}),
         status: "queued",
@@ -265,13 +281,13 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
       dispatch_targets: targetMetadata,
     });
     if (claimed) {
-      queued += queuedCount;
+      queuedMessages.push(...queuedForReminder);
     } else {
       skipped += 1;
     }
   }
 
-  return { scanned: rows.length, queued, skipped, failed };
+  return { scanned: rows.length, queued: queuedMessages, skipped, failed };
 }
 
 export async function finalizeReminderDeliveryForMessageLog(input: {
