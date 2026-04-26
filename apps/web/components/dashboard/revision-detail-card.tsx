@@ -17,6 +17,7 @@ export function RevisionDetailCard({
   vehicleId,
   revisionDueDate,
   revisionReminderEnabled,
+  revisionReminderChannel = null,
   revisionAppointmentDate,
   revisionAppointmentTime,
 }: {
@@ -24,6 +25,7 @@ export function RevisionDetailCard({
   vehicleId: string;
   revisionDueDate: string | null;
   revisionReminderEnabled: boolean | null;
+  revisionReminderChannel?: "whatsapp" | "telegram_test" | null;
   revisionAppointmentDate: string | null;
   revisionAppointmentTime: string | null;
 }) {
@@ -101,6 +103,17 @@ export function RevisionDetailCard({
                 className="h-4 w-4 rounded border-white/20 bg-transparent text-accent focus:ring-accent/40"
               />
             </span>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Canale promemoria</span>
+            <select
+              name="revisionReminderChannel"
+              defaultValue={revisionReminderChannel ?? "whatsapp"}
+              className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent/40"
+            >
+              <option value="whatsapp">WhatsApp</option>
+              <option value="telegram_test">Telegram (test)</option>
+            </select>
           </label>
           <label className="block">
             <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Data appuntamento</span>

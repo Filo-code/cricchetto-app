@@ -140,6 +140,7 @@ export interface DashboardVehicleDetail {
     model: string | null;
     revisionDueDate: string | null;
     revisionReminderEnabled: boolean | null;
+    revisionReminderChannel: "whatsapp" | "telegram_test" | null;
     revisionAppointmentDate: string | null;
     revisionAppointmentTime: string | null;
     rowVersion: number;

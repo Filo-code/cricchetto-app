@@ -11,6 +11,7 @@ export interface RevisionUpdateInput {
   vehicleId: string;
   revisionDueDate: string;
   revisionReminderEnabled?: boolean;
+  revisionReminderChannel?: "whatsapp" | "telegram_test" | null;
   revisionAppointmentDate?: string | null;
   revisionAppointmentTime?: string | null;
   source: "whatsapp" | "telegram_test" | "dashboard" | "system";
@@ -74,6 +75,9 @@ export async function updateRevisionDueDate(input: RevisionUpdateInput): Promise
   }
 
   const nextReminderEnabled = input.revisionReminderEnabled ?? vehicle.revision_reminder_enabled ?? true;
+  const nextReminderChannel = input.revisionReminderChannel === undefined
+    ? (vehicle as any).revision_reminder_channel ?? null
+    : (input.revisionReminderChannel ?? null);
   const nextAppointmentDate = input.revisionAppointmentDate === undefined
     ? vehicle.revision_appointment_date
     : input.revisionAppointmentDate;
@@ -87,9 +91,10 @@ export async function updateRevisionDueDate(input: RevisionUpdateInput): Promise
       revision_due_date: input.revisionDueDate,
       revision_last_updated_at: new Date().toISOString(),
       revision_reminder_enabled: nextReminderEnabled,
+      revision_reminder_channel: nextReminderChannel,
       revision_appointment_date: nextAppointmentDate,
       revision_appointment_time: nextAppointmentTime,
-    })
+    } as any)
     .eq("workshop_id", input.workshopId)
     .eq("id", input.vehicleId);
 
@@ -125,6 +130,7 @@ export async function updateRevisionDueDate(input: RevisionUpdateInput): Promise
     offsets: normalizeRevisionReminderOffsets(settings.revision_reminder_offsets_days),
     recipientPolicy: settings.revision_reminder_recipient_policy as RecipientPolicy,
     customerIdentifier,
+    preferredChannel: nextReminderChannel as "whatsapp" | "telegram_test" | null | undefined,
   });
 }
 

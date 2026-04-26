@@ -172,7 +172,7 @@ export async function getVehicleDetailByPlate(inputPlate: string): Promise<Dashb
   const workshop = await readDashboardWorkshop();
   const { data: vehicle, error } = await supabaseServer
     .from("vehicles")
-    .select("id,workshop_id,customer_id,plate,plate_normalized,model,revision_due_date,revision_reminder_enabled,revision_appointment_date,revision_appointment_time,row_version,created_at,updated_at")
+    .select("id,workshop_id,customer_id,plate,plate_normalized,model,revision_due_date,revision_reminder_enabled,revision_reminder_channel,revision_appointment_date,revision_appointment_time,row_version,created_at,updated_at")
     .eq("workshop_id", workshop.id)
     .eq("plate_normalized", plate)
     .maybeSingle();
@@ -195,6 +195,7 @@ export async function getVehicleDetailByPlate(inputPlate: string): Promise<Dashb
       model: vehicle.model,
       revisionDueDate: vehicle.revision_due_date,
       revisionReminderEnabled: vehicle.revision_reminder_enabled,
+      revisionReminderChannel: (vehicle as any).revision_reminder_channel ?? null,
       revisionAppointmentDate: vehicle.revision_appointment_date,
       revisionAppointmentTime: vehicle.revision_appointment_time,
       rowVersion: Number(vehicle.row_version),

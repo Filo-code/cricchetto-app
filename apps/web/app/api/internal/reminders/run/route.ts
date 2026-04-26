@@ -21,11 +21,11 @@ export async function POST(request: Request): Promise<Response> {
     if (Array.isArray(reminderTypes) && reminderTypes.some((value: unknown) => typeof value !== "string" || !REMINDER_TYPES.includes(value as (typeof REMINDER_TYPES)[number]))) {
       throw new AppError("reminderTypes contains unsupported values", { statusCode: 400, parseStatus: "validation_failed" });
     }
-    const queued = await queueDueReminderMessages({
+    const result = await queueDueReminderMessages({
       limit: (limit as number | undefined) ?? 20,
       reminderTypes: reminderTypes as (typeof REMINDER_TYPES)[number][] | undefined,
     });
-    return Response.json({ ok: true, queued });
+    return Response.json({ ok: true, ...result });
   } catch (error) {
     const status = error instanceof AppError ? error.statusCode : 500;
     return Response.json({ ok: false, error: getErrorMessage(error) }, { status });

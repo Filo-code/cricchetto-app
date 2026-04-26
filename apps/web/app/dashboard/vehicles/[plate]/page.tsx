@@ -64,6 +64,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ plate:
             vehicleId={detail.vehicle.id}
             revisionDueDate={detail.vehicle.revisionDueDate}
             revisionReminderEnabled={detail.vehicle.revisionReminderEnabled}
+            revisionReminderChannel={detail.vehicle.revisionReminderChannel}
             revisionAppointmentDate={detail.vehicle.revisionAppointmentDate}
             revisionAppointmentTime={detail.vehicle.revisionAppointmentTime}
           />

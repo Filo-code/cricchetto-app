@@ -17,6 +17,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (body.revisionReminderEnabled !== undefined && typeof body.revisionReminderEnabled !== "boolean") {
       throw new AppError("revisionReminderEnabled must be a boolean", { statusCode: 400, parseStatus: "validation_failed" });
     }
+    if (body.revisionReminderChannel !== undefined && body.revisionReminderChannel !== null && !["whatsapp", "telegram_test"].includes(body.revisionReminderChannel)) {
+      throw new AppError("revisionReminderChannel must be whatsapp, telegram_test, or null", { statusCode: 400, parseStatus: "validation_failed" });
+    }
     if (body.revisionAppointmentDate !== undefined && body.revisionAppointmentDate !== null && typeof body.revisionAppointmentDate !== "string") {
       throw new AppError("revisionAppointmentDate must be a string or null", { statusCode: 400, parseStatus: "validation_failed" });
     }
@@ -33,6 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       vehicleId: target.vehicleId,
       revisionDueDate: assertIsoDate(body.revisionDueDate),
       revisionReminderEnabled: body.revisionReminderEnabled,
+      revisionReminderChannel: body.revisionReminderChannel ?? undefined,
       revisionAppointmentDate: body.revisionAppointmentDate ? assertIsoDate(body.revisionAppointmentDate) : null,
       revisionAppointmentTime: body.revisionAppointmentTime ? assertIsoTime(body.revisionAppointmentTime) : null,
       source: "dashboard",

@@ -152,6 +152,8 @@ export async function updateWorkOrderRevisionAction(_state: DashboardActionState
   const revisionAppointmentDate = textValue(formData, "revisionAppointmentDate");
   const revisionAppointmentTime = textValue(formData, "revisionAppointmentTime");
   const revisionReminderEnabled = formData.get("revisionReminderEnabled") === "on";
+  const rawChannel = textValue(formData, "revisionReminderChannel");
+  const revisionReminderChannel = rawChannel === "whatsapp" || rawChannel === "telegram_test" ? rawChannel : null;
 
   if (!revisionDueDate) {
     return failureState("Inserisci una data revisione valida.");
@@ -167,6 +169,7 @@ export async function updateWorkOrderRevisionAction(_state: DashboardActionState
         actorRef: "dashboard",
         revisionDueDate,
         revisionReminderEnabled,
+        revisionReminderChannel,
         revisionAppointmentDate: revisionAppointmentDate || null,
         revisionAppointmentTime: revisionAppointmentTime || null,
       },

@@ -38,6 +38,13 @@ interface QueuedReminderMessage {
   text: string;
 }
 
+export interface ReminderRunResult {
+  scanned: number;
+  queued: number;
+  skipped: number;
+  failed: number;
+}
+
 export interface ReminderScheduleInput {
   workshopId: string;
   reminderType: ReminderType;
@@ -128,6 +135,7 @@ export async function scheduleRevisionReminders(input: {
   recipientPolicy: RecipientPolicy;
   mechanicIdentifier?: string;
   customerIdentifier?: string | null;
+  preferredChannel?: Channel | null;
 }): Promise<void> {
   for (const offset of input.offsets) {
     const reminderType = `revision_due_${offset}d` as ReminderType;
@@ -142,12 +150,16 @@ export async function scheduleRevisionReminders(input: {
       scheduledFor: scheduledReminderTimestamp(addDays(input.revisionDueDate, -offset)),
       mechanicIdentifier: input.mechanicIdentifier,
       customerIdentifier: input.customerIdentifier,
-      metadata: { revision_due_date: input.revisionDueDate, offset_days: offset },
+      metadata: {
+        revision_due_date: input.revisionDueDate,
+        offset_days: offset,
+        ...(input.preferredChannel ? { preferred_channel: input.preferredChannel } : {}),
+      },
     });
   }
 }
 
-export async function queueDueReminderMessages(input: { limit?: number; reminderTypes?: ReminderType[] } = {}): Promise<QueuedReminderMessage[]> {
+export async function queueDueReminderMessages(input: { limit?: number; reminderTypes?: ReminderType[] } = {}): Promise<ReminderRunResult> {
   let query = supabaseServer
     .from("reminders")
     .select("id,workshop_id,reminder_type,recipient_policy,resolved_mechanic_identifier,resolved_customer_identifier,metadata")
@@ -165,9 +177,25 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
     throw new Error(`Failed to read due reminders: ${error.message}`);
   }
 
-  const queued: QueuedReminderMessage[] = [];
-  for (const reminder of (data ?? []) as DueReminderRow[]) {
-    const route = await readDispatchChannel(reminder.workshop_id);
+  const rows = (data ?? []) as DueReminderRow[];
+  let queued = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const reminder of rows) {
+    const preferredChannel = typeof reminder.metadata?.preferred_channel === "string"
+      ? reminder.metadata.preferred_channel as Channel
+      : undefined;
+
+    let route: ReminderDispatchRoute;
+    try {
+      route = await readDispatchChannel(reminder.workshop_id, preferredChannel);
+    } catch {
+      console.warn(`[reminders] no dispatch channel for reminder ${reminder.id} workshop ${reminder.workshop_id} preferred_channel=${preferredChannel ?? "none"}`);
+      skipped += 1;
+      continue;
+    }
+
     const targets = buildReminderDispatchTargets(reminder, route);
     const targetMetadata = buildInitialReminderTargetMetadata(reminder, route);
     if (targets.length === 0) {
@@ -178,10 +206,10 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
         dispatch_targets: targetMetadata,
         last_dispatch_error: "No valid reminder recipient available",
       });
+      failed += 1;
       continue;
     }
 
-    const queuedForReminder: QueuedReminderMessage[] = [];
     let queuedCount = 0;
     for (const target of targets) {
       const outbound = await queueOutbound({
@@ -207,14 +235,6 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
         continue;
       }
       queuedCount += 1;
-      queuedForReminder.push({
-        relatedReminderId: reminder.id,
-        messageLogId: outbound.messageLogId,
-        channel: outbound.channel,
-        provider: outbound.provider,
-        recipientIdentifier: outbound.recipientIdentifier,
-        text: outbound.text,
-      });
       targetMetadata[target.targetKey] = {
         ...(targetMetadata[target.targetKey] ?? {}),
         status: "queued",
@@ -234,6 +254,7 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
         dispatch_targets: targetMetadata,
         last_dispatch_error: "No outbound messages were queued",
       });
+      failed += 1;
       continue;
     }
 
@@ -244,11 +265,13 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
       dispatch_targets: targetMetadata,
     });
     if (claimed) {
-      queued.push(...queuedForReminder);
+      queued += queuedCount;
+    } else {
+      skipped += 1;
     }
   }
 
-  return queued;
+  return { scanned: rows.length, queued, skipped, failed };
 }
 
 export async function finalizeReminderDeliveryForMessageLog(input: {
@@ -321,29 +344,38 @@ function reminderIdempotencyKey(input: ReminderScheduleInput): string {
   return `reminder:${input.workshopId}:${owner}:${input.reminderType}:${sourceDate}`;
 }
 
-async function readDispatchChannel(workshopId: string): Promise<ReminderDispatchRoute> {
-  const { data, error } = await supabaseServer
+async function readDispatchChannel(workshopId: string, preferredChannel?: Channel): Promise<ReminderDispatchRoute> {
+  let query = supabaseServer
     .from("workshop_channels")
     .select("channel,provider,recipient_identifier,sender_identifier")
     .eq("workshop_id", workshopId)
-    .eq("is_active", true)
-    .in("channel", ["whatsapp", "telegram_test"]);
+    .eq("is_active", true);
+
+  if (preferredChannel) {
+    query = query.eq("channel", preferredChannel);
+  } else {
+    query = query.in("channel", ["whatsapp", "telegram_test"]);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Failed to resolve reminder channel: ${error.message}`);
   }
 
-  const route = (data ?? [])
-    .sort((left: ReminderDispatchRoute, right: ReminderDispatchRoute) => {
-      if (left.channel === right.channel) return 0;
-      return left.channel === "whatsapp" ? -1 : 1;
-    })[0];
+  const candidates = (data ?? []) as ReminderDispatchRoute[];
+  const route = preferredChannel
+    ? candidates[0]
+    : candidates.sort((left, right) => {
+        if (left.channel === right.channel) return 0;
+        return left.channel === "whatsapp" ? -1 : 1;
+      })[0];
 
   if (!route) {
-    throw new Error("No active reminder dispatch channel configured");
+    throw new Error(`No active reminder dispatch channel configured${preferredChannel ? ` for ${preferredChannel}` : ""}`);
   }
 
-  return route as ReminderDispatchRoute;
+  return route;
 }
 
 function buildReminderDispatchTargets(reminder: DueReminderRow, route: ReminderDispatchRoute): ReminderDispatchTarget[] {
