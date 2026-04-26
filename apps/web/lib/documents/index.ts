@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { AppError } from "../errors";
 import { supabaseServer } from "../supabase-server";
 import type { CommandExecutionResult, DocumentType } from "../types";
+import { renderDocumentFromTemplate, readWorkshopProfileForDocument } from "./template-renderer";
 
 const DOCUMENT_OUTBOUND_URL_TTL_SECONDS = Number(process.env.Criccheto_DOCUMENT_OUTBOUND_URL_TTL ?? "86400");
 const DOCUMENT_GENERATION_STALE_MINUTES = Number(process.env.Criccheto_DOCUMENT_GENERATION_STALE_MINUTES ?? "15");
@@ -346,9 +347,9 @@ async function claimPendingDocuments(limit = 10): Promise<any[]> {
 
 async function generateAndStoreDocument(document: any): Promise<ProcessedDocumentResult> {
   try {
-    const [workOrder, workshopName] = await Promise.all([
+    const [workOrder, workshopProfile] = await Promise.all([
       readWorkOrder(document.workshop_id, document.work_order_id),
-      readWorkshopName(document.workshop_id),
+      readWorkshopProfileForDocument(document.workshop_id),
     ]);
     const includeOperationalDetail = document.document_type === "estimate" || document.document_type === "final_summary";
     const items = includeOperationalDetail
@@ -360,7 +361,33 @@ async function generateAndStoreDocument(document: any): Promise<ProcessedDocumen
     const filename = `${document.document_type}_v${document.version}_${workOrder.public_code}.pdf`;
     const storageBucket = process.env.Criccheto_DOCUMENTS_BUCKET || "documents";
     const storagePath = `${document.workshop_id}/${document.work_order_id}/${filename}`;
-    const pdf = generateMinimalPdf(document, workOrder, { items, notes, workshopName });
+
+    let pdf: Buffer;
+    let generatedBy = "backend_placeholder_pdf";
+    let templateMetadata: Record<string, unknown> = {};
+
+    try {
+      const templateResult = await renderDocumentFromTemplate({
+        workshopId: document.workshop_id,
+        documentType: document.document_type as DocumentType,
+        workOrder,
+        workshopProfile,
+        items,
+        notes,
+      });
+      if (templateResult) {
+        pdf = templateResult.bytes;
+        generatedBy = "template_renderer";
+        templateMetadata = { template_path: templateResult.templatePath };
+      } else {
+        pdf = generateMinimalPdf(document, workOrder, { items, notes, workshopName: workshopProfile.name });
+      }
+    } catch (templateError) {
+      const tMsg = templateError instanceof Error ? templateError.message : String(templateError);
+      console.warn("[document-worker] Template rendering failed, using fallback PDF:", tMsg);
+      templateMetadata = { template_error: tMsg, template_failed_at: new Date().toISOString() };
+      pdf = generateMinimalPdf(document, workOrder, { items, notes, workshopName: workshopProfile.name });
+    }
 
     const { error: uploadError } = await supabaseServer.storage
       .from(storageBucket)
@@ -383,8 +410,9 @@ async function generateAndStoreDocument(document: any): Promise<ProcessedDocumen
         filename,
         generated_at: generatedAt,
         metadata: {
-          generated_by: "backend_placeholder_pdf",
+          generated_by: generatedBy,
           generated_at: generatedAt,
+          ...templateMetadata,
         },
       })
       .eq("id", document.id)
@@ -433,19 +461,6 @@ async function readWorkOrder(workshopId: string, workOrderId: string): Promise<a
   return data;
 }
 
-async function readWorkshopName(workshopId: string): Promise<string> {
-  const { data, error } = await supabaseServer
-    .from("workshops")
-    .select("name,display_name")
-    .eq("id", workshopId)
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to read workshop for document: ${error.message}`);
-  }
-
-  return (data as any).display_name ?? data.name;
-}
 
 async function readWorkOrderItems(workshopId: string, workOrderId: string): Promise<Array<{ item_type: string; description: string; quantity: number; unit_price: number; row_total: number }>> {
   const { data, error } = await supabaseServer

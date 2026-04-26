@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, FileText } from "lucide-react";
+import { AlertCircle, FileText, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import {
@@ -126,12 +126,20 @@ export function WorkshopDocumentTemplatesForm({
   return (
     <Card>
       <CardHeader title="Template documenti" eyebrow="Documenti" />
-      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] px-4 py-3">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400/70" />
-        <p className="text-xs leading-5 text-zinc-500">
-          I template vengono salvati in modo sicuro.{" "}
-          <span className="text-amber-400/70">L&apos;uso automatico nella generazione PDF non è ancora attivo</span>
-          {" "}— il generatore documenti dovrà essere aggiornato per applicarli.
+      <div className="mb-3 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/70" />
+        <p className="text-xs leading-5 text-zinc-400">
+          I template PDF compilabili vengono usati automaticamente quando presenti.{" "}
+          Se un template non è compilabile o non contiene campi riconosciuti, Cricchetto usa il generatore standard.
+        </p>
+      </div>
+      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+        <p className="text-xs leading-5 text-zinc-600">
+          <span className="text-zinc-400">Campi supportati:</span>{" "}
+          workshop_name, public_code, plate, vehicle_model, customer_name, customer_phone, kilometers, reported_issue,
+          items_text, parts_text, labor_text, subtotal, total, document_date, legal_text, footer_text,
+          workshop_vat, workshop_address, workshop_phone, workshop_email.
         </p>
       </div>
       <div className="space-y-3">
