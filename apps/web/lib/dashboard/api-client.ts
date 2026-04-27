@@ -1,6 +1,7 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
+import { COOKIE_NAME } from "./session-core";
 import { dashboardServerHeaders } from "./auth";
 
 interface ApiEnvelope<T> {
@@ -49,7 +50,7 @@ export async function dashboardGet<T>(path: string, options?: DashboardGetOption
 
   const response = await fetch(url, {
     cache: "no-store",
-    headers: dashboardServerHeaders(),
+    headers: await buildFetchHeaders(),
   });
   const payload = await readApiEnvelope<T>({ response, method: "GET", path });
 
@@ -87,10 +88,7 @@ export async function dashboardPost<T>(path: string, body?: unknown, method = "P
   const response = await fetch(url, {
     method,
     cache: "no-store",
-    headers: {
-      ...dashboardServerHeaders(),
-      "content-type": "application/json",
-    },
+    headers: await buildFetchHeaders({ "content-type": "application/json" }),
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const payload = await readApiEnvelope<T>({ response, method, path });
@@ -108,6 +106,23 @@ export async function dashboardPost<T>(path: string, body?: unknown, method = "P
   }
 
   return payload.data;
+}
+
+async function buildFetchHeaders(extra?: Record<string, string>): Promise<HeadersInit> {
+  const base = dashboardServerHeaders() as Record<string, string>;
+  const result: Record<string, string> = extra ? { ...base, ...extra } : { ...base };
+
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(COOKIE_NAME);
+    if (sessionCookie) {
+      result["Cookie"] = `${sessionCookie.name}=${sessionCookie.value}`;
+    }
+  } catch {
+    // Outside request context (background tasks) — no cookie to forward
+  }
+
+  return result;
 }
 
 async function getRequestBaseUrl(): Promise<DashboardBaseUrlResolution> {
