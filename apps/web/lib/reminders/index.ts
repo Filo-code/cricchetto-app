@@ -394,6 +394,8 @@ async function readDispatchChannel(workshopId: string, preferredChannel?: Channe
   return route;
 }
 
+// backend resolves tenant/channel/recipient; n8n only dispatches the already-normalized payload.
+// Add new recipient policies here — never in n8n workflow logic.
 function buildReminderDispatchTargets(reminder: DueReminderRow, route: ReminderDispatchRoute): ReminderDispatchTarget[] {
   const mechanicIdentifier = reminder.resolved_mechanic_identifier ?? route.sender_identifier ?? null;
   const customerIdentifier = normalizeReminderCustomerIdentifier(route.channel, reminder.resolved_customer_identifier);
@@ -502,6 +504,8 @@ async function markReminderSendingIfScheduled(
   return Boolean(data);
 }
 
+// Customer delivery is WhatsApp-only. telegram_test is for internal/mechanic use.
+// If channel is not whatsapp, customer identifier is intentionally suppressed here.
 function normalizeReminderCustomerIdentifier(channel: Channel, identifier?: string | null): string | null {
   if (!identifier) {
     return null;

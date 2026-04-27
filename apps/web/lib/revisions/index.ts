@@ -123,6 +123,9 @@ export async function updateRevisionDueDate(input: RevisionUpdateInput): Promise
 
   const customerIdentifier = await readVehicleCustomerPhone(input.workshopId, vehicle.customer_id);
 
+  // backend resolves tenant/channel/recipient; n8n only dispatches.
+  // revision_reminder_recipient_policy defaults to customer_only (migration 0015).
+  // For customer delivery, preferred_channel must be whatsapp — telegram_test is internal only.
   await scheduleRevisionReminders({
     workshopId: input.workshopId,
     vehicleId: input.vehicleId,
