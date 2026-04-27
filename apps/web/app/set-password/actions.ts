@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { authenticateDashboardUser } from "../../lib/dashboard/session";
+import { clearDashboardSession } from "../../lib/dashboard/session";
 import { consumePasswordResetToken, setUserPassword } from "../../lib/dashboard/users";
 
 export interface SetPasswordActionState {
@@ -34,13 +34,8 @@ export async function setPasswordAction(
 
   await setUserPassword(user.id, password);
 
-  // Log in immediately after setting password
-  try {
-    await authenticateDashboardUser({ email: user.email, password });
-  } catch {
-    // Password set, but session creation failed — redirect to login
-    redirect("/login");
-  }
-
-  redirect("/dashboard");
+  // Clear any existing session (e.g. a platform-owner session open in the same browser)
+  // before redirecting. The new user must authenticate from a clean state.
+  await clearDashboardSession();
+  redirect("/login?setup=done");
 }

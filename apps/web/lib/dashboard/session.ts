@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { timingSafeEqualString } from "../crypto";
+import { isPlatformOwnerEmail } from "../admin/platform-owner-emails";
 import { readDashboardWorkshop } from "./read";
 import { findWorkshopUserByEmail, verifyPassword } from "./users";
 import {
@@ -25,11 +26,20 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
     redirect("/login");
   }
 
-  // Verify the workshop still exists (readDashboardWorkshop resolves via session)
+  // Verify the workshop still exists and check its status
+  let workshop: Awaited<ReturnType<typeof readDashboardWorkshop>>;
   try {
-    await readDashboardWorkshop();
+    workshop = await readDashboardWorkshop();
   } catch {
     redirect("/login");
+  }
+
+  // Gate suspended/closed accounts. Platform owners bypass this check.
+  if (
+    (workshop.status === "suspended" || workshop.status === "closed")
+    && !isPlatformOwnerEmail(session.email)
+  ) {
+    redirect("/login?account=suspended");
   }
 
   return session;

@@ -449,6 +449,53 @@ export async function deactivateWorkshopDocumentTemplateAction(_state: Dashboard
   }
 }
 
+export async function updateCustomerAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const customerId = textValue(formData, "customerId");
+  const workOrderId = textValue(formData, "workOrderId");
+  if (!customerId) return failureState("Cliente non valido.");
+
+  const name = textValue(formData, "name");
+  const phone = textValue(formData, "phone");
+
+  if (!name) return failureState("Il nome cliente non può essere vuoto.");
+
+  try {
+    await dashboardPost(`/api/customers/${encodeURIComponent(customerId)}`, {
+      actorRef: "dashboard",
+      name,
+      phone,
+    }, "PATCH");
+    revalidateWorkOrderPaths(workOrderId || undefined);
+    return successState("Dati cliente aggiornati.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function updateVehicleAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const vehicleId = textValue(formData, "vehicleId");
+  const workOrderId = textValue(formData, "workOrderId");
+  if (!vehicleId) return failureState("Veicolo non valido.");
+
+  const model = textValue(formData, "model");
+  const plate = textValue(formData, "plate");
+
+  if (plate && plate.length < 5) return failureState("Targa non valida.");
+
+  try {
+    const body: Record<string, string> = { actorRef: "dashboard" };
+    if (model !== undefined) body.model = model;
+    if (plate) body.plate = plate;
+
+    await dashboardPost(`/api/vehicles/${encodeURIComponent(vehicleId)}`, body, "PATCH");
+    revalidateWorkOrderPaths(workOrderId || undefined);
+    revalidatePath("/dashboard");
+    return successState("Dati veicolo aggiornati.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 function textValue(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";

@@ -1,9 +1,11 @@
 import { ActivityTimeline } from "../../../../components/dashboard/activity-timeline";
 import { AttachmentsPanel } from "../../../../components/dashboard/attachments-panel";
+import { CustomerVehicleEditForm } from "../../../../components/dashboard/customer-vehicle-edit-form";
 import { DashboardHeader } from "../../../../components/dashboard/dashboard-header";
 import { DashboardShell } from "../../../../components/dashboard/dashboard-shell";
 import { DocumentsPanel } from "../../../../components/dashboard/documents-panel";
 import { ItemsPanel } from "../../../../components/dashboard/items-panel";
+import { MessagesPanel } from "../../../../components/dashboard/messages-panel";
 import { NotesPanel } from "../../../../components/dashboard/notes-panel";
 import { RevisionDetailCard } from "../../../../components/dashboard/revision-detail-card";
 import { WorkOrderDetailPanel } from "../../../../components/dashboard/work-order-detail-panel";
@@ -12,14 +14,17 @@ import { dashboardGet } from "../../../../lib/dashboard/api-client";
 import { peekDashboardSession } from "../../../../lib/dashboard/session-core";
 import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-auth";
 import type { DashboardWorkOrderDetail } from "../../../../lib/dashboard/types";
+import type { DashboardMessageLog, DashboardCustomerVehicleData } from "../../../../lib/dashboard/read";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [detail, session] = await Promise.all([
+  const [detail, session, messageLogs, customerVehicle] = await Promise.all([
     dashboardGet<DashboardWorkOrderDetail>(`/api/work-orders/${id}`),
     peekDashboardSession(),
+    dashboardGet<DashboardMessageLog[]>(`/api/work-orders/${id}/messages`).catch(() => [] as DashboardMessageLog[]),
+    dashboardGet<DashboardCustomerVehicleData>(`/api/work-orders/${id}/customer-vehicle`).catch(() => null),
   ]);
   const showTelegramTest = session ? isPlatformOwnerEmail(session.email) : false;
 
@@ -37,6 +42,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <NotesPanel notes={detail.notes} workOrderId={detail.workOrder.id} status={detail.workOrder.status} />
             <AttachmentsPanel attachments={detail.attachments} workOrderId={detail.workOrder.id} status={detail.workOrder.status} />
             <DocumentsPanel documents={detail.documents} workOrderId={detail.workOrder.id} status={detail.workOrder.status} />
+            <MessagesPanel logs={messageLogs} />
           </div>
           <div className="space-y-5">
             <WorkOrderActions workOrderId={detail.workOrder.id} status={detail.workOrder.status} />
@@ -49,6 +55,9 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
               revisionAppointmentTime={detail.workOrder.revisionAppointmentTime}
               showTelegramTest={showTelegramTest}
             />
+            {customerVehicle && (
+              <CustomerVehicleEditForm data={customerVehicle} workOrderId={detail.workOrder.id} />
+            )}
             <ActivityTimeline activity={detail.activity} />
           </div>
         </div>

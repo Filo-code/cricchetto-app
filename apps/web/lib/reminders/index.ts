@@ -189,7 +189,26 @@ export async function queueDueReminderMessages(input: { limit?: number; reminder
   let skipped = 0;
   let failed = 0;
 
+  // Check workshop statuses once for all due reminders to avoid per-row queries.
+  const distinctWorkshopIds = [...new Set(rows.map((r) => r.workshop_id))];
+  const suspendedOrClosed = new Set<string>();
+  if (distinctWorkshopIds.length > 0) {
+    const { data: wStatuses } = await supabaseServer
+      .from("workshops")
+      .select("id,status")
+      .in("id", distinctWorkshopIds);
+    for (const w of (wStatuses ?? []) as any[]) {
+      if (w.status === "suspended" || w.status === "closed") {
+        suspendedOrClosed.add(w.id);
+      }
+    }
+  }
+
   for (const reminder of rows) {
+    if (suspendedOrClosed.has(reminder.workshop_id)) {
+      skipped += 1;
+      continue;
+    }
     const preferredChannel = typeof reminder.metadata?.preferred_channel === "string"
       ? reminder.metadata.preferred_channel as Channel
       : undefined;

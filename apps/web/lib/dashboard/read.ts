@@ -330,21 +330,27 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
   return publicUrl;
 }
 
-export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null }> {
+export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null; status: string }> {
   // Resolve workshopId: session > env-var > first-by-created_at (dev/legacy fallback)
   const session = await peekDashboardSession();
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
   const workshopId = session?.workshopId ?? configuredWorkshopId;
 
-  let query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").order("created_at", { ascending: true }).limit(1);
+  let query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone,status").order("created_at", { ascending: true }).limit(1);
   if (workshopId) {
-    query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", workshopId).limit(1);
+    query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone,status").eq("id", workshopId).limit(1);
   }
 
   const { data, error } = await query.maybeSingle();
   if (error) throw new Error(`Failed to read workshop: ${error.message}`);
   if (!data) throw new Error("No workshop configured for dashboard");
-  return { id: data.id, name: (data as any).display_name ?? data.name, timezone: data.timezone, logoUrl: (data as any).logo_url ?? null };
+  return {
+    id: data.id,
+    name: (data as any).display_name ?? data.name,
+    timezone: data.timezone,
+    logoUrl: (data as any).logo_url ?? null,
+    status: (data as any).status ?? "active",
+  };
 }
 
 async function readSearchVehicles(workshopId: string, query: string): Promise<DashboardSearchVehicle[]> {
@@ -906,4 +912,111 @@ function isPreviewableAttachment(type: DashboardAttachment["attachmentType"], mi
       || mimeType?.startsWith("audio/")
       || mimeType?.startsWith("video/"),
     );
+}
+
+export interface DashboardMessageLog {
+  id: string;
+  channel: string;
+  provider: string;
+  providerStatus: string | null;
+  providerMessageId: string | null;
+  recipientIdentifier: string | null;
+  errorMessage: string | null;
+  relatedDocumentId: string | null;
+  relatedReminderId: string | null;
+  createdAt: string;
+}
+
+export async function readWorkOrderMessageLogs(workOrderId: string): Promise<DashboardMessageLog[]> {
+  const workshop = await readDashboardWorkshop();
+  const { data, error } = await supabaseServer
+    .from("message_logs")
+    .select("id,channel,provider,provider_status,provider_message_id,recipient_identifier,error_message,related_document_id,related_reminder_id,created_at")
+    .eq("workshop_id", workshop.id)
+    .eq("direction", "outbound")
+    .eq("related_work_order_id", workOrderId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(`Failed to read message logs: ${error.message}`);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    channel: row.channel,
+    provider: row.provider,
+    providerStatus: row.provider_status ?? null,
+    providerMessageId: row.provider_message_id ?? null,
+    recipientIdentifier: row.recipient_identifier ?? null,
+    errorMessage: row.error_message ?? null,
+    relatedDocumentId: row.related_document_id ?? null,
+    relatedReminderId: row.related_reminder_id ?? null,
+    createdAt: row.created_at,
+  }));
+}
+
+export interface DashboardCustomerVehicleData {
+  customerId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  vehicleId: string;
+  vehiclePlate: string;
+  vehicleModel: string | null;
+}
+
+export async function readCustomerAndVehicleForEdit(workOrderId: string): Promise<DashboardCustomerVehicleData> {
+  const workshop = await readDashboardWorkshop();
+  const { data: wo, error: woErr } = await supabaseServer
+    .from("work_orders")
+    .select("vehicle_id,customer_id")
+    .eq("workshop_id", workshop.id)
+    .eq("id", workOrderId)
+    .maybeSingle();
+
+  if (woErr) throw new Error(`Failed to read work order: ${woErr.message}`);
+  if (!wo) throw new AppError("Work order not found", { statusCode: 404, parseStatus: "not_found" });
+
+  const { data: vehicle, error: vErr } = await supabaseServer
+    .from("vehicles")
+    .select("id,plate,plate_normalized,model")
+    .eq("workshop_id", workshop.id)
+    .eq("id", wo.vehicle_id)
+    .maybeSingle();
+
+  if (vErr) throw new Error(`Failed to read vehicle: ${vErr.message}`);
+  if (!vehicle) throw new AppError("Vehicle not found", { statusCode: 404, parseStatus: "not_found" });
+
+  let customerName: string | null = null;
+  let customerPhone: string | null = null;
+  if (wo.customer_id) {
+    const { data: customer } = await supabaseServer
+      .from("customers")
+      .select("name,phone")
+      .eq("workshop_id", workshop.id)
+      .eq("id", wo.customer_id)
+      .maybeSingle();
+    if (customer) {
+      customerName = customer.name;
+      customerPhone = customer.phone ?? null;
+    }
+  }
+
+  return {
+    customerId: wo.customer_id ?? null,
+    customerName,
+    customerPhone,
+    vehicleId: vehicle.id,
+    vehiclePlate: (vehicle as any).plate ?? (vehicle as any).plate_normalized,
+    vehicleModel: vehicle.model ?? null,
+  };
+}
+
+export async function readWorkshopChannelStatus(workshopId: string): Promise<{ hasWhatsapp: boolean }> {
+  const { data } = await supabaseServer
+    .from("workshop_channels")
+    .select("channel")
+    .eq("workshop_id", workshopId)
+    .eq("channel", "whatsapp")
+    .eq("is_active", true)
+    .limit(1);
+
+  return { hasWhatsapp: (data ?? []).length > 0 };
 }

@@ -407,6 +407,20 @@ async function resolveWorkshopRoute(inbound: NormalizedInboundMessage): Promise<
     });
   }
 
+  // Gate suspended/closed workshops: do not process new business mutations.
+  const { data: workshop } = await supabaseServer
+    .from("workshops")
+    .select("status")
+    .eq("id", data.workshop_id)
+    .maybeSingle();
+  const workshopStatus = (workshop as any)?.status ?? "active";
+  if (workshopStatus === "suspended" || workshopStatus === "closed") {
+    throw new AppError("Workshop not active", {
+      parseStatus: "ignored",
+      publicMessage: "Officina non attiva.",
+    });
+  }
+
   return {
     workshopId: data.workshop_id,
     channel: data.channel as Channel,

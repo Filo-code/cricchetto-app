@@ -5,6 +5,7 @@ import { WorkshopLogoForm } from "../../../components/dashboard/workshop-logo-fo
 import { WorkshopFiscalForm } from "../../../components/dashboard/workshop-fiscal-form";
 import { WorkshopLegalForm } from "../../../components/dashboard/workshop-legal-form";
 import { WorkshopDocumentTemplatesForm } from "../../../components/dashboard/workshop-document-templates-form";
+import { WorkshopReadinessChecklist } from "../../../components/dashboard/workshop-readiness-checklist";
 import { dashboardGet } from "../../../lib/dashboard/api-client";
 import type { WorkshopFullSettings } from "../../../lib/dashboard/read";
 import type { WorkshopDocumentTemplate } from "../../../lib/dashboard/document-templates";
@@ -12,8 +13,11 @@ import type { WorkshopDocumentTemplate } from "../../../lib/dashboard/document-t
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const settings = await dashboardGet<WorkshopFullSettings>("/api/dashboard/settings");
-  const templates = await dashboardGet<WorkshopDocumentTemplate[]>("/api/dashboard/settings/document-templates");
+  const [settings, templates, channelStatus] = await Promise.all([
+    dashboardGet<WorkshopFullSettings>("/api/dashboard/settings"),
+    dashboardGet<WorkshopDocumentTemplate[]>("/api/dashboard/settings/document-templates"),
+    dashboardGet<{ hasWhatsapp: boolean }>("/api/dashboard/settings/channels").catch(() => ({ hasWhatsapp: false })),
+  ]);
 
   return (
     <DashboardShell>
@@ -22,6 +26,12 @@ export default async function SettingsPage() {
         subtitle="Personalizza i dati dell'officina visibili in dashboard e nei documenti generati."
       />
       <div className="max-w-2xl space-y-5">
+        <WorkshopReadinessChecklist
+          settings={settings}
+          templates={templates}
+          hasWhatsapp={channelStatus.hasWhatsapp}
+        />
+
         <WorkshopDisplayNameForm workshopName={settings.name} displayName={settings.displayName} />
 
         <WorkshopLogoForm logoUrl={settings.logoUrl} />

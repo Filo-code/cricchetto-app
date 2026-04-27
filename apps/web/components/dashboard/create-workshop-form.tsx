@@ -34,6 +34,9 @@ export function CreateWorkshopForm() {
           <p className="text-[11px] text-zinc-600">
             Scade: {new Date(state.result.expiresAt).toLocaleString("it-IT")}
           </p>
+          <p className="text-[11px] text-amber-500/80">
+            Apri il link in una finestra anonima o invialo direttamente al cliente. Il link serve solo per impostare la password del nuovo account.
+          </p>
         </div>
         <Button
           type="button"
