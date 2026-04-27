@@ -2,6 +2,7 @@ import { AppError } from "../errors";
 import { reconcileStaleDocuments } from "../documents";
 import { assertValidPlate, normalizePlate } from "../plates";
 import { supabaseServer } from "../supabase-server";
+import { peekDashboardSession } from "./session-core";
 import { addDays, getLocalDate } from "../time";
 import type { DocumentStatus, WorkOrderStatus } from "../types";
 import type {
@@ -261,10 +262,13 @@ export interface WorkshopFullSettings {
 }
 
 export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
+  const session = await peekDashboardSession();
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
+  const workshopId = session?.workshopId ?? configuredWorkshopId;
+
   let workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").order("created_at", { ascending: true }).limit(1);
-  if (configuredWorkshopId) {
-    workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", configuredWorkshopId).limit(1);
+  if (workshopId) {
+    workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", workshopId).limit(1);
   }
   const { data, error } = await workshopQuery.maybeSingle();
   if (error) throw new Error(`Failed to read workshop: ${error.message}`);
@@ -327,10 +331,14 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
 }
 
 export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null }> {
+  // Resolve workshopId: session > env-var > first-by-created_at (dev/legacy fallback)
+  const session = await peekDashboardSession();
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
+  const workshopId = session?.workshopId ?? configuredWorkshopId;
+
   let query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").order("created_at", { ascending: true }).limit(1);
-  if (configuredWorkshopId) {
-    query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", configuredWorkshopId).limit(1);
+  if (workshopId) {
+    query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", workshopId).limit(1);
   }
 
   const { data, error } = await query.maybeSingle();
