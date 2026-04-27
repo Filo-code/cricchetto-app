@@ -5,6 +5,8 @@ import { uploadDashboardAttachment } from "../attachments";
 import { readWorkOrderForMutation, getWorkshopSettings, uploadWorkshopLogo } from "./read";
 import { uploadWorkshopDocumentTemplate, deactivateWorkshopDocumentTemplate } from "./document-templates";
 import { DashboardApiError, dashboardPost } from "./api-client";
+import { peekDashboardSession } from "./session-core";
+import { isPlatformOwnerEmail } from "../admin/platform-auth";
 
 export interface DashboardActionState {
   ok: boolean;
@@ -151,6 +153,16 @@ export async function updateWorkOrderRevisionAction(_state: DashboardActionState
   const revisionDueDate = textValue(formData, "revisionDueDate");
   const revisionReminderEnabled = formData.get("revisionReminderEnabled") === "on";
   const rawChannel = textValue(formData, "revisionReminderChannel");
+
+  // telegram_test is internal/platform-admin only — never a valid client customer channel.
+  // Enforce server-side regardless of UI; UI hiding is an additional convenience only.
+  if (rawChannel === "telegram_test") {
+    const session = await peekDashboardSession();
+    if (!session || !isPlatformOwnerEmail(session.email)) {
+      return failureState("Canale non disponibile. Usa WhatsApp per i promemoria clienti.");
+    }
+  }
+
   const revisionReminderChannel = rawChannel === "whatsapp" || rawChannel === "telegram_test" ? rawChannel : null;
 
   if (!revisionDueDate) {

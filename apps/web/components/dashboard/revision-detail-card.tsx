@@ -20,6 +20,7 @@ export function RevisionDetailCard({
   revisionReminderChannel = null,
   revisionAppointmentDate,
   revisionAppointmentTime,
+  showTelegramTest = false,
 }: {
   workOrderId?: string | null;
   vehicleId: string;
@@ -28,6 +29,8 @@ export function RevisionDetailCard({
   revisionReminderChannel?: "whatsapp" | "telegram_test" | null;
   revisionAppointmentDate: string | null;
   revisionAppointmentTime: string | null;
+  // true only for Cricchetto platform owner/admin — never for client workshop users.
+  showTelegramTest?: boolean;
 }) {
   const [revisionState, revisionAction] = useActionState(updateWorkOrderRevisionAction, initialState);
   const [appointmentState, appointmentAction] = useActionState(updateRevisionAppointmentAction, initialState);
@@ -101,11 +104,13 @@ export function RevisionDetailCard({
               <span className="mb-2 block text-[13px] font-medium tracking-wide text-zinc-300">Canale promemoria</span>
               <select
                 name="revisionReminderChannel"
-                defaultValue={revisionReminderChannel ?? "whatsapp"}
+                defaultValue={showTelegramTest ? (revisionReminderChannel ?? "whatsapp") : "whatsapp"}
                 className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent/40"
               >
-                <option value="whatsapp">WhatsApp</option>
-                <option value="telegram_test">Telegram (test)</option>
+                <option value="whatsapp">WhatsApp — cliente</option>
+                {showTelegramTest && (
+                  <option value="telegram_test">Telegram test — interno Cricchetto</option>
+                )}
               </select>
             </label>
           </div>

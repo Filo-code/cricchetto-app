@@ -17,6 +17,11 @@ function getPlatformOwnerEmails(): Set<string> {
   );
 }
 
+// Synchronous check — safe to call from server actions and server components.
+export function isPlatformOwnerEmail(email: string): boolean {
+  return getPlatformOwnerEmails().has(email.toLowerCase());
+}
+
 export async function requirePlatformOwnerSession(): Promise<DashboardSessionPayload> {
   const session = await requireDashboardSession();
 

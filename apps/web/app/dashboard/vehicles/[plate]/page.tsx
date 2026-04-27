@@ -9,6 +9,8 @@ import { KpiCard } from "../../../../components/dashboard/kpi-card";
 import { ButtonLink } from "../../../../components/ui/button";
 import { Card, CardHeader } from "../../../../components/ui/card";
 import { dashboardGet } from "../../../../lib/dashboard/api-client";
+import { peekDashboardSession } from "../../../../lib/dashboard/session-core";
+import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-auth";
 import type { DashboardVehicleDetail } from "../../../../lib/dashboard/types";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +18,14 @@ export const dynamic = "force-dynamic";
 export default async function VehiclePage({ params }: { params: Promise<{ plate: string }> }) {
   const { plate } = await params;
   const normalizedPlate = decodeURIComponent(plate).trim().toUpperCase();
-  const detail = await dashboardGet<DashboardVehicleDetail>(
-    `/api/dashboard/plate/${encodeURIComponent(normalizedPlate)}`,
-    { notFound: "return-null" },
-  );
+  const [detail, session] = await Promise.all([
+    dashboardGet<DashboardVehicleDetail>(
+      `/api/dashboard/plate/${encodeURIComponent(normalizedPlate)}`,
+      { notFound: "return-null" },
+    ),
+    peekDashboardSession(),
+  ]);
+  const showTelegramTest = session ? isPlatformOwnerEmail(session.email) : false;
 
   if (!detail) {
     return <VehicleNotFound plate={normalizedPlate} />;
@@ -67,6 +73,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ plate:
             revisionReminderChannel={detail.vehicle.revisionReminderChannel}
             revisionAppointmentDate={detail.vehicle.revisionAppointmentDate}
             revisionAppointmentTime={detail.vehicle.revisionAppointmentTime}
+            showTelegramTest={showTelegramTest}
           />
         </div>
       </div>

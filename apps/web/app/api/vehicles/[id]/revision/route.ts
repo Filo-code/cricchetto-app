@@ -20,6 +20,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (body.revisionReminderChannel !== undefined && body.revisionReminderChannel !== null && !["whatsapp", "telegram_test"].includes(body.revisionReminderChannel)) {
       throw new AppError("revisionReminderChannel must be whatsapp, telegram_test, or null", { statusCode: 400, parseStatus: "validation_failed" });
     }
+    // NOTE: telegram_test platform-owner enforcement is in updateWorkOrderRevisionAction (server action).
+    // This route is authenticated by x-dashboard-secret header only and has no session context.
+    // The server action rejects telegram_test for non-platform-owners before calling this route.
     if (body.revisionAppointmentDate !== undefined && body.revisionAppointmentDate !== null && typeof body.revisionAppointmentDate !== "string") {
       throw new AppError("revisionAppointmentDate must be a string or null", { statusCode: 400, parseStatus: "validation_failed" });
     }

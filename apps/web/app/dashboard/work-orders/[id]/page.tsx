@@ -9,13 +9,19 @@ import { RevisionDetailCard } from "../../../../components/dashboard/revision-de
 import { WorkOrderDetailPanel } from "../../../../components/dashboard/work-order-detail-panel";
 import { WorkOrderActions } from "../../../../components/dashboard/work-order-actions";
 import { dashboardGet } from "../../../../lib/dashboard/api-client";
+import { peekDashboardSession } from "../../../../lib/dashboard/session-core";
+import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-auth";
 import type { DashboardWorkOrderDetail } from "../../../../lib/dashboard/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const detail = await dashboardGet<DashboardWorkOrderDetail>(`/api/work-orders/${id}`);
+  const [detail, session] = await Promise.all([
+    dashboardGet<DashboardWorkOrderDetail>(`/api/work-orders/${id}`),
+    peekDashboardSession(),
+  ]);
+  const showTelegramTest = session ? isPlatformOwnerEmail(session.email) : false;
 
   return (
     <DashboardShell>
@@ -41,6 +47,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
               revisionReminderEnabled={detail.workOrder.revisionReminderEnabled}
               revisionAppointmentDate={detail.workOrder.revisionAppointmentDate}
               revisionAppointmentTime={detail.workOrder.revisionAppointmentTime}
+              showTelegramTest={showTelegramTest}
             />
             <ActivityTimeline activity={detail.activity} />
           </div>

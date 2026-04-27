@@ -360,6 +360,9 @@ function reminderIdempotencyKey(input: ReminderScheduleInput): string {
   return `reminder:${input.workshopId}:${owner}:${input.reminderType}:${sourceDate}`;
 }
 
+// Client reminders must use whatsapp. telegram_test is internal/admin-only.
+// When no preferredChannel, whatsapp is chosen first via sort.
+// The caller (updateRevisionDueDate) enforces telegram_test is only set by platform owners.
 async function readDispatchChannel(workshopId: string, preferredChannel?: Channel): Promise<ReminderDispatchRoute> {
   let query = supabaseServer
     .from("workshop_channels")
@@ -396,8 +399,14 @@ async function readDispatchChannel(workshopId: string, preferredChannel?: Channe
 
 // backend resolves tenant/channel/recipient; n8n only dispatches the already-normalized payload.
 // Add new recipient policies here — never in n8n workflow logic.
+// Customer reminders are WhatsApp-only. telegram_test targets the internal admin chat only.
 function buildReminderDispatchTargets(reminder: DueReminderRow, route: ReminderDispatchRoute): ReminderDispatchTarget[] {
-  const mechanicIdentifier = reminder.resolved_mechanic_identifier ?? route.sender_identifier ?? null;
+  // For telegram_test: route.recipient_identifier = admin chat ID (valid Telegram chat_id).
+  // route.sender_identifier = bot name ("Cricchetto_bot"), which is NOT a valid chat_id.
+  // For whatsapp: route.sender_identifier = WhatsApp phone number ID (the platform sender).
+  const mechanicIdentifier = reminder.resolved_mechanic_identifier
+    ?? (route.channel === "telegram_test" ? route.recipient_identifier : route.sender_identifier)
+    ?? null;
   const customerIdentifier = normalizeReminderCustomerIdentifier(route.channel, reminder.resolved_customer_identifier);
   const baseText = reminderText(reminder);
 
