@@ -1009,6 +1009,14 @@ export async function readCustomerAndVehicleForEdit(workOrderId: string): Promis
   };
 }
 
+export async function readDashboardSearchSuggestions(query: string): Promise<DashboardSearchVehicle[]> {
+  const workshop = await readDashboardWorkshop();
+  const clean = query.trim().replace(/\s+/g, " ");
+  if (clean.length < 2) return [];
+  const results = await readSearchVehicles(workshop.id, clean);
+  return results.slice(0, 6);
+}
+
 export async function readWorkshopChannelStatus(workshopId: string): Promise<{ hasWhatsapp: boolean }> {
   const { data } = await supabaseServer
     .from("workshop_channels")
