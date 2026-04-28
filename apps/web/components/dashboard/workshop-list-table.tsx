@@ -11,10 +11,12 @@ import {
   generateUserResetLinkAction,
   updateWorkshopAdminAction,
   resetDemoWorkshopAction,
+  populateDemoWorkshopAction,
   type WorkshopStatusActionState,
   type ResetPasswordActionState,
   type UpdateWorkshopActionState,
   type DemoResetActionState,
+  type DemoPopulateActionState,
 } from "../../app/admin/workshops/actions";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -33,6 +35,7 @@ const initialStatus: WorkshopStatusActionState = { ok: false, message: "" };
 const initialReset: ResetPasswordActionState = { ok: false, message: "" };
 const initialUpdate: UpdateWorkshopActionState = { ok: false, message: "" };
 const initialDemoReset: DemoResetActionState = { ok: false, message: "" };
+const initialDemoPopulate: DemoPopulateActionState = { ok: false, message: "" };
 
 const inputClass =
   "w-full rounded-lg border border-white/[0.1] bg-black/20 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-accent/40 transition-colors";
@@ -284,6 +287,60 @@ function DemoResetSection() {
   );
 }
 
+function DemoPopulateSection() {
+  const [state, formAction] = useActionState(populateDemoWorkshopAction, initialDemoPopulate);
+  const [confirmText, setConfirmText] = useState("");
+
+  const confirmed = confirmText === "POPOLA DEMO";
+
+  return (
+    <form action={formAction} className="border-t border-white/[0.06] pt-3 space-y-2">
+      <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-emerald-600/70">Popola demo</p>
+      <p className="text-[10px] text-zinc-600 leading-relaxed">
+        Crea 5 schede demo realistiche (clienti, veicoli, voci, note) solo nell&apos;officina piattaforma.
+        Skippa le targhe già presenti. Non invia messaggi né promemoria.
+      </p>
+
+      {state.ok ? (
+        <div className="space-y-1">
+          <p className="text-[11px] text-emerald-400">{state.message}</p>
+          {state.counts && state.counts.skipped.length > 0 && (
+            <p className="text-[10px] font-mono text-zinc-600">
+              Saltate: {state.counts.skipped.join(", ")}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div>
+            <label className={labelClass}>Digita POPOLA DEMO per confermare</label>
+            <input
+              name="confirmation"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="POPOLA DEMO"
+              autoComplete="off"
+              spellCheck={false}
+              className={inputClass}
+            />
+          </div>
+          {state.message && (
+            <p className="text-[11px] text-red-400">{state.message}</p>
+          )}
+          <Button
+            type="submit"
+            variant="ghost"
+            className={`text-xs ${confirmed ? "text-emerald-400 hover:text-emerald-300" : "text-zinc-700 cursor-not-allowed"}`}
+            disabled={!confirmed}
+          >
+            Popola demo
+          </Button>
+        </>
+      )}
+    </form>
+  );
+}
+
 export function WorkshopListTable({
   workshops,
   platformWorkshopId,
@@ -385,8 +442,9 @@ export function WorkshopListTable({
               <WorkshopStatusActions workshop={workshop} isProtected={isProtected} />
             </div>
 
-            {/* Demo reset — platform workshop only */}
+            {/* Demo controls — platform workshop only */}
             {isProtected && <DemoResetSection />}
+            {isProtected && <DemoPopulateSection />}
           </div>
         );
       })}

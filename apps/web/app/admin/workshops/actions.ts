@@ -7,6 +7,7 @@ import { setWorkshopStatus, updateWorkshopForAdmin } from "../../../lib/admin/wo
 import { generatePasswordResetToken } from "../../../lib/dashboard/users";
 import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
 import { resetPlatformWorkshopData, type DemoResetCounts } from "../../../lib/admin/workshop-reset";
+import { populateDemoWorkshopData, type DemoPopulateCounts } from "../../../lib/admin/workshop-populate";
 
 export interface CreateWorkshopActionState {
   ok: boolean;
@@ -273,6 +274,74 @@ export async function resetDemoWorkshopAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Errore durante il reset.",
+      stamp: Date.now(),
+    };
+  }
+}
+
+export interface DemoPopulateActionState {
+  ok: boolean;
+  message: string;
+  counts?: DemoPopulateCounts;
+  stamp?: number;
+}
+
+export async function populateDemoWorkshopAction(
+  _state: DemoPopulateActionState,
+  formData: FormData,
+): Promise<DemoPopulateActionState> {
+  try {
+    await requirePlatformOwnerSession();
+  } catch {
+    return { ok: false, message: "Accesso negato.", stamp: Date.now() };
+  }
+
+  const confirmation = text(formData, "confirmation");
+  if (confirmation !== "POPOLA DEMO") {
+    return {
+      ok: false,
+      message: "Stringa di conferma errata. Digita esattamente: POPOLA DEMO",
+      stamp: Date.now(),
+    };
+  }
+
+  // workshopId always from env — never from client.
+  const platformWorkshopId = getPlatformWorkshopId();
+  if (!platformWorkshopId) {
+    return {
+      ok: false,
+      message: "Criccheto_PLATFORM_WORKSHOP_ID non configurato. Azione non disponibile.",
+      stamp: Date.now(),
+    };
+  }
+
+  try {
+    const counts = await populateDemoWorkshopData(platformWorkshopId);
+    revalidatePath("/admin/workshops");
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/work-orders");
+    revalidatePath("/dashboard/vehicles");
+
+    if (counts.created === 0 && counts.skipped.length > 0) {
+      return {
+        ok: false,
+        message: `Dati demo già presenti (${counts.skipped.join(", ")}). Esegui prima "Reset dati demo".`,
+        counts,
+        stamp: Date.now(),
+      };
+    }
+
+    const skipNote = counts.skipped.length > 0 ? ` Saltate (già presenti): ${counts.skipped.join(", ")}.` : "";
+    return {
+      ok: true,
+      message: `Demo popolato: ${counts.created} schede, ${counts.items_created} voci.${skipNote}`,
+      counts,
+      stamp: Date.now(),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Errore durante il popolamento demo.",
       stamp: Date.now(),
     };
   }

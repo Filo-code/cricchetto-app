@@ -64,13 +64,15 @@ export default async function DashboardPage() {
 
       {/* Cockpit layout: schede attive | sidebar */}
       <div className="grid gap-5 xl:grid-cols-[1.3fr,0.7fr]">
-        <WorkOrderListCard
-          title="Schede attive"
-          eyebrow="Tutte"
-          workOrders={overview.activeWorkOrders}
-          emptyTitle="Nessuna scheda attiva"
-          action={<NewWorkOrderDialog />}
-        />
+        <div className="space-y-4">
+          <NewWorkOrderDialog />
+          <WorkOrderListCard
+            title="Schede attive"
+            eyebrow="Tutte"
+            workOrders={overview.activeWorkOrders}
+            emptyTitle="Nessuna scheda attiva"
+          />
+        </div>
 
         <div className="space-y-5">
           <RevisionCard revisions={overview.upcomingRevisions} />
