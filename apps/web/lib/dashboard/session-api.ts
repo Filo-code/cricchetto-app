@@ -3,8 +3,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import type { DashboardSessionPayload } from "./session";
-
-const COOKIE_NAME = "cricchetto_dashboard_session";
+import { COOKIE_NAME } from "./session-core";
 
 export async function verifyDashboardSessionForApi(): Promise<DashboardSessionPayload | null> {
   const cookieStore = await cookies();

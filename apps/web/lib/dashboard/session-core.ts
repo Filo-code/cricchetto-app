@@ -44,6 +44,9 @@ export function verifyDashboardSession(value: string | undefined): DashboardSess
 }
 
 export function signPayload(payload: DashboardSessionPayload): string {
+  if (!process.env.Criccheto_DASHBOARD_SESSION_SECRET && process.env.NODE_ENV === "production") {
+    console.warn("[session-core] Criccheto_DASHBOARD_SESSION_SECRET not set — falling back to shared secret for session signing. Set a dedicated session secret in production.");
+  }
   const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   return `${encodedPayload}.${hmac(encodedPayload)}`;
 }

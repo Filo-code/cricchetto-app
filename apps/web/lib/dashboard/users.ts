@@ -65,7 +65,7 @@ export async function findWorkshopUserByEmail(email: string): Promise<WorkshopUs
     .from("workshop_users")
     .select("id,workshop_id,email,display_name,password_hash,role,is_active")
     .eq("is_active", true)
-    .ilike("email", email.trim())
+    .eq("email", email.trim().toLowerCase())
     .maybeSingle();
 
   if (error) throw new Error(`Failed to look up user: ${error.message}`);
