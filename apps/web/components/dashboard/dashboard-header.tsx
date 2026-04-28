@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Gauge, LayoutGrid, LogOut, Settings } from "lucide-react";
+import { CalendarClock, Car, ClipboardList, Gauge, LayoutGrid, LogOut, Settings } from "lucide-react";
 import { logoutAction } from "../../app/login/actions";
 import { Button, ButtonLink } from "../ui/button";
 import { PlatformConsoleNavLink } from "./platform-console-nav-link";
@@ -68,6 +68,18 @@ export function DashboardHeader({
           </ButtonLink>
         ) : (
           <>
+            <ButtonLink href="/dashboard/work-orders" aria-label="Schede lavoro" className="shrink-0">
+              <ClipboardList className="h-4 w-4" />
+              Schede lavoro
+            </ButtonLink>
+            <ButtonLink href="/dashboard/vehicles" aria-label="Veicoli" className="shrink-0">
+              <Car className="h-4 w-4" />
+              Veicoli
+            </ButtonLink>
+            <ButtonLink href="/dashboard/revisions" aria-label="Revisioni" className="shrink-0">
+              <CalendarClock className="h-4 w-4" />
+              Revisioni
+            </ButtonLink>
             <ButtonLink href="/dashboard/settings" aria-label="Impostazioni officina" className="shrink-0">
               <Settings className="h-4 w-4" />
               Impostazioni

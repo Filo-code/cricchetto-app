@@ -23,32 +23,30 @@ export function ActivityTimeline({ activity }: { activity: DashboardActivity[] }
     <Card>
       <CardHeader title="Attività recente" eyebrow="Registro" />
       {activity.length > 0 ? (
-        <ol className="relative space-y-4 before:absolute before:left-[15px] before:top-1 before:bottom-1 before:w-px before:bg-gradient-to-b before:from-white/15 before:via-white/5 before:to-transparent">
+        <ol className="relative space-y-3 before:absolute before:left-[11px] before:top-1 before:bottom-1 before:w-px before:bg-gradient-to-b before:from-white/10 before:via-white/[0.04] before:to-transparent">
           {activity.map((event) => {
             const Icon = EVENT_ICONS[event.eventType] ?? Activity;
             return (
-              <li key={event.id} className="relative grid grid-cols-[auto,1fr] gap-3 pl-0">
-                <div className="relative z-10 mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-[#060809] text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  <Icon className="h-3.5 w-3.5" />
+              <li key={event.id} className="relative grid grid-cols-[auto,1fr] gap-3">
+                <div className="relative z-10 mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.07] bg-[#060809] text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <Icon className="h-3 w-3" />
                 </div>
-                <div className="min-w-0 pb-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-zinc-100">{activityLabel(event.eventType)}</p>
-                    <p className="text-xs text-zinc-600 tabular-nums">{formatDateTime(event.createdAt)}</p>
+                <div className="min-w-0 pb-0.5">
+                  <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
+                    <p className="text-[12.5px] font-medium leading-snug text-zinc-200">{activityLabel(event.eventType)}</p>
+                    <p className="shrink-0 text-[10px] text-zinc-700 tabular-nums">{formatDateTime(event.createdAt)}</p>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    {event.plate ? (
-                      <Link
-                        href={`/dashboard/work-orders/${event.workOrderId}`}
-                        className="text-zinc-300 transition-colors hover:text-accent"
-                      >
-                        {event.plate} · <span className="font-mono text-xs">{event.publicCode}</span>
-                      </Link>
-                    ) : (
-                      "Scheda non collegata"
-                    )}
-                    {event.actorRef ? <span className="text-zinc-600"> · {event.actorRef}</span> : null}
-                  </p>
+                  {event.plate ? (
+                    <Link
+                      href={`/dashboard/work-orders/${event.workOrderId}`}
+                      className="text-[11px] text-zinc-500 transition-colors hover:text-accent"
+                    >
+                      {event.plate}
+                      <span className="ml-1 font-mono text-[10px] text-zinc-600">{event.publicCode}</span>
+                    </Link>
+                  ) : (
+                    <p className="text-[11px] text-zinc-700">—</p>
+                  )}
                 </div>
               </li>
             );

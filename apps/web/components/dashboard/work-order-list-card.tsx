@@ -25,7 +25,7 @@ export function WorkOrderListCard({
         eyebrow={eyebrow ? `${eyebrow} · ${workOrders.length}` : undefined}
         action={action}
       />
-      <div className="space-y-3">
+      <div className="space-y-2">
         {workOrders.length > 0 ? (
           workOrders.map((workOrder) => <WorkOrderSummaryCard key={workOrder.id} workOrder={workOrder} />)
         ) : (

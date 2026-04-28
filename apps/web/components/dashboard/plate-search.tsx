@@ -19,31 +19,23 @@ export function PlateSearch() {
   }
 
   return (
-    <form onSubmit={submit} className="glass-panel rounded-2xl p-5 sm:p-6">
-      <div className="mb-4 flex flex-col gap-1">
-        <label htmlFor="plate-search" className="block text-sm font-semibold tracking-tight text-zinc-100">
-          Ricerca rapida
-        </label>
-        <p className="text-xs text-zinc-500">Targa, nome o cognome cliente.</p>
+    <form onSubmit={submit} className="glass-panel flex items-center gap-3 rounded-xl px-4 py-3 focus-within:border-accent/[0.18] transition-colors duration-200">
+      <Search className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden />
+      <span className="hidden text-[9.5px] font-mono uppercase tracking-[0.14em] text-zinc-700 sm:block">Targa</span>
+      <div className="flex-1 min-w-0">
+        <Input
+          id="plate-search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Cerca per targa o nome cliente…"
+          aria-label="Cerca per targa o nome cliente"
+          autoComplete="off"
+          className="h-9 border-white/[0.06] bg-transparent text-sm shadow-none"
+        />
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
-          <Input
-            id="plate-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cerca per targa o nome cliente"
-            aria-label="Cerca per targa o nome cliente"
-            autoComplete="off"
-            className="pl-11"
-          />
-        </div>
-        <Button type="submit" variant="primary" className="h-12 sm:w-36">
-          <Search className="h-4 w-4" />
-          Cerca
-        </Button>
-      </div>
+      <Button type="submit" variant="primary" className="h-9 shrink-0 px-5 text-xs">
+        Cerca
+      </Button>
     </form>
   );
 }
