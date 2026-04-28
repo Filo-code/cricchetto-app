@@ -125,7 +125,8 @@ export function PlateSearch() {
       </form>
 
       {showDropdown && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/95 shadow-xl backdrop-blur-sm">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/95 shadow-xl backdrop-blur-sm animate-fade-in-up">
+          <div className="max-h-[min(20rem,50dvh)] overflow-y-auto">
           {suggestions.length === 0 ? (
             <p className="px-4 py-3 text-sm text-zinc-500">Nessun risultato</p>
           ) : (
@@ -134,7 +135,7 @@ export function PlateSearch() {
                 <li key={vehicle.vehicleId}>
                   <button
                     type="button"
-                    className="w-full px-4 py-3 text-left transition hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none"
+                    className="w-full px-4 py-3 text-left transition-colors duration-150 hover:bg-white/[0.06] focus:bg-white/[0.06] focus:outline-none"
                     onClick={() => handleSuggestionClick(vehicle)}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -157,6 +158,7 @@ export function PlateSearch() {
               ))}
             </ul>
           )}
+          </div>
         </div>
       )}
     </div>

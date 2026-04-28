@@ -245,6 +245,7 @@ export interface WorkshopFullSettings {
   displayName: string | null;
   timezone: string;
   logoUrl: string | null;
+  hourlyRate: number;
   ragioneSociale: string | null;
   partitaIva: string | null;
   codiceFiscale: string | null;
@@ -274,13 +275,22 @@ export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
   if (error) throw new Error(`Failed to read workshop: ${error.message}`);
   if (!data) throw new Error("No workshop configured for dashboard");
 
-  const { data: profile } = await (supabaseServer as any)
-    .from("workshop_profiles")
-    .select("ragione_sociale,partita_iva,codice_fiscale,indirizzo,citta,cap,provincia,telefono,email,pec,sdi,condizioni_accettazione,condizioni_preventivo,footer_documenti")
-    .eq("workshop_id", data.id)
-    .maybeSingle();
+  const [profileResult, wsSettingsResult] = await Promise.all([
+    (supabaseServer as any)
+      .from("workshop_profiles")
+      .select("ragione_sociale,partita_iva,codice_fiscale,indirizzo,citta,cap,provincia,telefono,email,pec,sdi,condizioni_accettazione,condizioni_preventivo,footer_documenti")
+      .eq("workshop_id", data.id)
+      .maybeSingle(),
+    supabaseServer
+      .from("workshop_settings")
+      .select("hourly_rate")
+      .eq("workshop_id", data.id)
+      .maybeSingle(),
+  ]);
+  const profile = (profileResult as any)?.data;
+  const wsSettings = (wsSettingsResult as any)?.data;
 
-  const p = (profile as any) ?? {};
+  const p = profile ?? {};
 
   return {
     id: data.id,
@@ -288,6 +298,7 @@ export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
     displayName: (data as any).display_name ?? null,
     timezone: data.timezone,
     logoUrl: (data as any).logo_url ?? null,
+    hourlyRate: Number(wsSettings?.hourly_rate ?? 0),
     ragioneSociale: p.ragione_sociale ?? null,
     partitaIva: p.partita_iva ?? null,
     codiceFiscale: p.codice_fiscale ?? null,

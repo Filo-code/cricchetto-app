@@ -45,13 +45,14 @@ export function NewWorkOrderDialog() {
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/75 px-4 py-8 backdrop-blur-md animate-fade-in"
           onClick={() => setOpen(false)}
           role="dialog"
           aria-modal="true"
         >
+          <div className="flex min-h-full items-center justify-center">
           <div
-            className="glass-panel max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl p-6 sm:p-7 animate-scale-in shadow-glass-hover"
+            className="glass-panel my-4 w-full max-w-3xl rounded-3xl p-6 sm:p-7 animate-scale-in shadow-glass-hover"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-7 flex items-start justify-between gap-4">
@@ -115,6 +116,7 @@ export function NewWorkOrderDialog() {
                 <FormSubmitButton label="Apri scheda" pendingLabel="Apertura scheda..." className="sm:min-w-44" />
               </div>
             </form>
+          </div>
           </div>
         </div>
       ) : null}

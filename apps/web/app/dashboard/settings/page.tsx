@@ -6,6 +6,7 @@ import { WorkshopFiscalForm } from "../../../components/dashboard/workshop-fisca
 import { WorkshopLegalForm } from "../../../components/dashboard/workshop-legal-form";
 import { WorkshopDocumentTemplatesForm } from "../../../components/dashboard/workshop-document-templates-form";
 import { WorkshopReadinessChecklist } from "../../../components/dashboard/workshop-readiness-checklist";
+import { WorkshopLaborRateForm } from "../../../components/dashboard/workshop-labor-rate-form";
 import { dashboardGet } from "../../../lib/dashboard/api-client";
 import type { WorkshopFullSettings } from "../../../lib/dashboard/read";
 import type { WorkshopDocumentTemplate } from "../../../lib/dashboard/document-templates";
@@ -33,6 +34,8 @@ export default async function SettingsPage() {
         />
 
         <WorkshopDisplayNameForm workshopName={settings.name} displayName={settings.displayName} />
+
+        <WorkshopLaborRateForm hourlyRate={settings.hourlyRate} />
 
         <WorkshopLogoForm logoUrl={settings.logoUrl} />
 

@@ -313,6 +313,26 @@ export async function removeAttachmentAction(_state: DashboardActionState, formD
   }
 }
 
+export async function updateWorkshopLaborRateAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const raw = textValue(formData, "hourlyRate").replace(",", ".");
+  const hourlyRate = raw ? Number(raw) : NaN;
+
+  if (!Number.isFinite(hourlyRate) || hourlyRate < 0) {
+    return failureState("Inserisci una tariffa oraria valida (valore non negativo).");
+  }
+  if (hourlyRate > 1000) {
+    return failureState("La tariffa oraria non può superare 1000 €/ora.");
+  }
+
+  try {
+    await dashboardPost("/api/dashboard/settings/labor-rate", { hourlyRate }, "PATCH");
+    revalidatePath("/dashboard/settings");
+    return successState("Tariffa manodopera aggiornata.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function updateWorkshopDisplayNameAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
   const displayName = textValue(formData, "displayName");
   if (!displayName) return failureState("Il nome visualizzato non può essere vuoto.");

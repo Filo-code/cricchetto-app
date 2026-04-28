@@ -89,7 +89,7 @@ export function ItemsPanel({
       />
 
       {editor === "part" ? (
-        <form ref={partFormRef} action={partAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+        <form ref={partFormRef} action={partAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 animate-fade-in">
           <input type="hidden" name="workOrderId" value={workOrderId} />
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
@@ -119,7 +119,7 @@ export function ItemsPanel({
       ) : null}
 
       {editor === "labor" ? (
-        <form ref={laborFormRef} action={laborAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+        <form ref={laborFormRef} action={laborAction} className="mb-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 animate-fade-in">
           <input type="hidden" name="workOrderId" value={workOrderId} />
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
