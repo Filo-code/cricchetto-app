@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requirePlatformOwnerSession } from "../../../lib/admin/platform-auth";
 import { provisionWorkshop, type ProvisionResult } from "../../../lib/admin/provisioning";
-import { setWorkshopStatus } from "../../../lib/admin/workshops";
+import { setWorkshopStatus, updateWorkshopForAdmin } from "../../../lib/admin/workshops";
 import { generatePasswordResetToken } from "../../../lib/dashboard/users";
 import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
 
@@ -75,6 +76,7 @@ export async function suspendWorkshopAction(
   }
   try {
     await setWorkshopStatus(workshopId, "suspended");
+    revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina sospesa.", stamp: Date.now() };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Errore durante la sospensione.", stamp: Date.now() };
@@ -99,6 +101,7 @@ export async function closeWorkshopAction(
   }
   try {
     await setWorkshopStatus(workshopId, "closed", reason);
+    revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina chiusa.", stamp: Date.now() };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Errore durante la chiusura.", stamp: Date.now() };
@@ -121,6 +124,7 @@ export async function reactivateWorkshopAction(
   // reactivation from those states should never occur. Allow it anyway as a safety valve.
   try {
     await setWorkshopStatus(workshopId, "active");
+    revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina riattivata.", stamp: Date.now() };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Errore durante la riattivazione.", stamp: Date.now() };
@@ -164,6 +168,54 @@ export async function generateUserResetLinkAction(
     };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Errore nella generazione del link.", stamp: Date.now() };
+  }
+}
+
+export interface UpdateWorkshopActionState {
+  ok: boolean;
+  message: string;
+  stamp?: number;
+}
+
+export async function updateWorkshopAdminAction(
+  _state: UpdateWorkshopActionState,
+  formData: FormData,
+): Promise<UpdateWorkshopActionState> {
+  try {
+    await requirePlatformOwnerSession();
+  } catch {
+    return { ok: false, message: "Accesso negato.", stamp: Date.now() };
+  }
+
+  const workshopId = text(formData, "workshopId");
+  if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
+
+  const displayName = text(formData, "displayName") || null;
+  const city = text(formData, "city");
+  const timezone = text(formData, "timezone");
+  const ownerDisplayName = text(formData, "ownerDisplayName");
+  const ownerUserId = text(formData, "ownerUserId") || null;
+
+  if (timezone && !/^[A-Za-z]/.test(timezone)) {
+    return { ok: false, message: "Fuso orario non valido.", stamp: Date.now() };
+  }
+
+  try {
+    await updateWorkshopForAdmin(workshopId, {
+      displayName,
+      city: city || null,
+      timezone: timezone || null,
+      ownerUserId,
+      ownerDisplayName: ownerDisplayName || null,
+    });
+    revalidatePath("/admin/workshops");
+    return { ok: true, message: "Officina aggiornata.", stamp: Date.now() };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Errore durante l'aggiornamento.",
+      stamp: Date.now(),
+    };
   }
 }
 

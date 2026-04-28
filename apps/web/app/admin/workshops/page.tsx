@@ -25,6 +25,7 @@ export default async function AdminWorkshopsPage() {
       <DashboardHeader
         title="Gestione officine"
         subtitle="Provisioning e gestione degli account officina clienti Filò."
+        navMode="admin"
       />
       <div className="space-y-8 max-w-2xl">
         <section>

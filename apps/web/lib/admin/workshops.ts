@@ -15,18 +15,20 @@ export interface AdminWorkshopUser {
 export interface AdminWorkshopListItem {
   id: string;
   name: string;
+  displayName: string | null;
   status: WorkshopStatus;
   createdAt: string;
   closedAt: string | null;
   closedReason: string | null;
   city: string | null;
+  timezone: string;
   users: AdminWorkshopUser[];
 }
 
 export async function listWorkshopsForAdmin(): Promise<AdminWorkshopListItem[]> {
   const { data: workshops, error } = await supabaseServer
     .from("workshops")
-    .select("id,name,display_name,status,created_at,closed_at,closed_reason")
+    .select("id,name,display_name,status,created_at,closed_at,closed_reason,timezone")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to list workshops: ${error.message}`);
@@ -67,11 +69,13 @@ export async function listWorkshopsForAdmin(): Promise<AdminWorkshopListItem[]> 
   return rows.map((w) => ({
     id: w.id,
     name: (w.display_name ?? w.name) as string,
+    displayName: (w.display_name ?? null) as string | null,
     status: ((w.status ?? "active") as WorkshopStatus),
     createdAt: w.created_at as string,
     closedAt: (w.closed_at ?? null) as string | null,
     closedReason: (w.closed_reason ?? null) as string | null,
     city: cityByWorkshop.get(w.id) ?? null,
+    timezone: (w.timezone ?? "Europe/Rome") as string,
     users: usersByWorkshop.get(w.id) ?? [],
   }));
 }
@@ -97,4 +101,50 @@ export async function setWorkshopStatus(
     .eq("id", workshopId);
 
   if (error) throw new Error(`Failed to update workshop status: ${error.message}`);
+}
+
+export interface WorkshopAdminUpdate {
+  displayName: string | null;
+  city: string | null;
+  timezone: string | null;
+  ownerUserId: string | null;
+  ownerDisplayName: string | null;
+}
+
+export async function updateWorkshopForAdmin(
+  workshopId: string,
+  updates: WorkshopAdminUpdate,
+): Promise<void> {
+  const workshopPatch: Record<string, unknown> = {};
+  if (updates.displayName !== null) {
+    workshopPatch.display_name = updates.displayName.trim() || null;
+  }
+  if (updates.timezone !== null && updates.timezone.trim()) {
+    workshopPatch.timezone = updates.timezone.trim();
+  }
+
+  if (Object.keys(workshopPatch).length > 0) {
+    const { error } = await supabaseServer
+      .from("workshops")
+      .update(workshopPatch)
+      .eq("id", workshopId);
+    if (error) throw new Error(`Errore aggiornamento officina: ${error.message}`);
+  }
+
+  if (updates.city !== null) {
+    const { error } = await (supabaseServer as any)
+      .from("workshop_profiles")
+      .update({ citta: updates.city.trim() || null })
+      .eq("workshop_id", workshopId);
+    if (error) throw new Error(`Errore aggiornamento profilo: ${error.message}`);
+  }
+
+  if (updates.ownerUserId && updates.ownerDisplayName !== null) {
+    const { error } = await (supabaseServer as any)
+      .from("workshop_users")
+      .update({ display_name: updates.ownerDisplayName.trim() || null })
+      .eq("id", updates.ownerUserId)
+      .eq("workshop_id", workshopId);
+    if (error) throw new Error(`Errore aggiornamento utente: ${error.message}`);
+  }
 }

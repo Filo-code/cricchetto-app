@@ -1,17 +1,21 @@
-import { Gauge, LogOut, Settings } from "lucide-react";
+import { Suspense } from "react";
+import { Gauge, LayoutGrid, LogOut, Settings } from "lucide-react";
 import { logoutAction } from "../../app/login/actions";
 import { Button, ButtonLink } from "../ui/button";
+import { PlatformConsoleNavLink } from "./platform-console-nav-link";
 
 export function DashboardHeader({
   title,
   subtitle,
   logoUrl,
   centered,
+  navMode = "dashboard",
 }: {
   title: string;
   subtitle: string;
   logoUrl?: string | null;
   centered?: boolean;
+  navMode?: "dashboard" | "admin";
 }) {
   return (
     <header
@@ -20,7 +24,7 @@ export function DashboardHeader({
       }`}
     >
       <div className={centered ? "w-full text-center" : "min-w-0"}>
-        {/* Filò-style brand pill with operational status dot */}
+        {/* Filò-style brand pill */}
         <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-white/[0.07] bg-white/[0.025] px-4 py-2">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -40,7 +44,9 @@ export function DashboardHeader({
           )}
           <span className="h-3 w-px bg-white/[0.12]" aria-hidden />
           <span className="status-dot status-dot-pulse bg-accent animate-soft-pulse" aria-hidden />
-          <span className="text-[10px] font-mono tracking-[0.15em] uppercase text-zinc-500">Officina · Attiva</span>
+          <span className="text-[10px] font-mono tracking-[0.15em] uppercase text-zinc-500">
+            {navMode === "admin" ? "Piattaforma · Filò" : "Officina · Attiva"}
+          </span>
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-50 sm:text-[2.5rem] sm:leading-[1.05]">
           {title}
@@ -54,10 +60,24 @@ export function DashboardHeader({
           <Gauge className="h-4 w-4" />
           Cruscotto
         </ButtonLink>
-        <ButtonLink href="/dashboard/settings" aria-label="Impostazioni officina" className="shrink-0">
-          <Settings className="h-4 w-4" />
-          Impostazioni
-        </ButtonLink>
+
+        {navMode === "admin" ? (
+          <ButtonLink href="/admin/workshops" aria-label="Console Filò — gestione officine" className="shrink-0">
+            <LayoutGrid className="h-4 w-4" />
+            Console Filò
+          </ButtonLink>
+        ) : (
+          <>
+            <ButtonLink href="/dashboard/settings" aria-label="Impostazioni officina" className="shrink-0">
+              <Settings className="h-4 w-4" />
+              Impostazioni
+            </ButtonLink>
+            <Suspense fallback={null}>
+              <PlatformConsoleNavLink />
+            </Suspense>
+          </>
+        )}
+
         <form action={logoutAction}>
           <Button type="submit" aria-label="Esci dalla dashboard" className="shrink-0">
             <LogOut className="h-4 w-4" />
