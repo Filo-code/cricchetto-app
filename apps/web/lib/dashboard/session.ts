@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { timingSafeEqualString } from "../crypto";
-import { isPlatformOwnerEmail } from "../admin/platform-owner-emails";
+import { isPlatformSession } from "../admin/platform-session";
 import { readDashboardWorkshop } from "./read";
 import { findWorkshopUserByEmail, verifyPassword } from "./users";
 import {
@@ -37,7 +37,7 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
   // Gate suspended/closed accounts. Platform owners bypass this check.
   if (
     (workshop.status === "suspended" || workshop.status === "closed")
-    && !isPlatformOwnerEmail(session.email)
+    && !isPlatformSession(session)
   ) {
     redirect("/login?account=suspended");
   }

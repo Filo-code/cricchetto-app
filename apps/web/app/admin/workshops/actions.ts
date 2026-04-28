@@ -4,6 +4,7 @@ import { requirePlatformOwnerSession } from "../../../lib/admin/platform-auth";
 import { provisionWorkshop, type ProvisionResult } from "../../../lib/admin/provisioning";
 import { setWorkshopStatus } from "../../../lib/admin/workshops";
 import { generatePasswordResetToken } from "../../../lib/dashboard/users";
+import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
 
 export interface CreateWorkshopActionState {
   ok: boolean;
@@ -68,6 +69,10 @@ export async function suspendWorkshopAction(
   }
   const workshopId = text(formData, "workshopId");
   if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
+  const platformWorkshopId = getPlatformWorkshopId();
+  if (platformWorkshopId && workshopId === platformWorkshopId) {
+    return { ok: false, message: "L'officina piattaforma non può essere sospesa o chiusa.", stamp: Date.now() };
+  }
   try {
     await setWorkshopStatus(workshopId, "suspended");
     return { ok: true, message: "Officina sospesa.", stamp: Date.now() };
@@ -88,6 +93,10 @@ export async function closeWorkshopAction(
   const workshopId = text(formData, "workshopId");
   const reason = text(formData, "reason") || undefined;
   if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
+  const platformWorkshopId = getPlatformWorkshopId();
+  if (platformWorkshopId && workshopId === platformWorkshopId) {
+    return { ok: false, message: "L'officina piattaforma non può essere sospesa o chiusa.", stamp: Date.now() };
+  }
   try {
     await setWorkshopStatus(workshopId, "closed", reason);
     return { ok: true, message: "Officina chiusa.", stamp: Date.now() };
@@ -107,6 +116,9 @@ export async function reactivateWorkshopAction(
   }
   const workshopId = text(formData, "workshopId");
   if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
+  // Reactivation of the platform workshop is allowed (no status restriction needed),
+  // but keep it consistent: platform workshop cannot be suspended/closed, so
+  // reactivation from those states should never occur. Allow it anyway as a safety valve.
   try {
     await setWorkshopStatus(workshopId, "active");
     return { ok: true, message: "Officina riattivata.", stamp: Date.now() };

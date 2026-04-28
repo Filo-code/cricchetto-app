@@ -27,13 +27,27 @@ const STATUS_COLORS: Record<string, string> = {
 const initialStatus: WorkshopStatusActionState = { ok: false, message: "" };
 const initialReset: ResetPasswordActionState = { ok: false, message: "" };
 
-function WorkshopStatusActions({ workshop }: { workshop: AdminWorkshopListItem }) {
+function WorkshopStatusActions({
+  workshop,
+  isProtected,
+}: {
+  workshop: AdminWorkshopListItem;
+  isProtected: boolean;
+}) {
   const [suspendState, suspendAction] = useActionState(suspendWorkshopAction, initialStatus);
   const [closeState, closeAction] = useActionState(closeWorkshopAction, initialStatus);
   const [reactivateState, reactivateAction] = useActionState(reactivateWorkshopAction, initialStatus);
 
   const feedback = suspendState.message || closeState.message || reactivateState.message;
   const feedbackOk = suspendState.ok || closeState.ok || reactivateState.ok;
+
+  if (isProtected) {
+    return (
+      <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.12em]">
+        Piattaforma / protetta — azioni disabilitate
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -107,7 +121,13 @@ function UserResetLink({ userId, userEmail }: { userId: string; userEmail: strin
   );
 }
 
-export function WorkshopListTable({ workshops }: { workshops: AdminWorkshopListItem[] }) {
+export function WorkshopListTable({
+  workshops,
+  platformWorkshopId,
+}: {
+  workshops: AdminWorkshopListItem[];
+  platformWorkshopId?: string | null;
+}) {
   if (workshops.length === 0) {
     return (
       <p className="text-sm text-zinc-500">Nessuna officina trovata.</p>
@@ -116,47 +136,57 @@ export function WorkshopListTable({ workshops }: { workshops: AdminWorkshopListI
 
   return (
     <div className="space-y-4">
-      {workshops.map((workshop) => (
-        <div key={workshop.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-zinc-100">{workshop.name}</p>
-              {workshop.city && <p className="text-[11px] text-zinc-500">{workshop.city}</p>}
-              <p className="text-[10px] text-zinc-600 font-mono">
-                Creata: {new Date(workshop.createdAt).toLocaleDateString("it-IT")}
-                {workshop.closedAt && ` · Chiusa: ${new Date(workshop.closedAt).toLocaleDateString("it-IT")}`}
-              </p>
-              {workshop.closedReason && (
-                <p className="text-[10px] text-zinc-600">Motivo: {workshop.closedReason}</p>
-              )}
-            </div>
-            <span className={`text-[11px] font-mono ${STATUS_COLORS[workshop.status] ?? "text-zinc-400"}`}>
-              {STATUS_LABELS[workshop.status] ?? workshop.status}
-            </span>
-          </div>
-
-          {workshop.users.length > 0 && (
-            <div className="border-t border-white/[0.06] pt-3 space-y-2">
-              <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-600">Utenti</p>
-              {workshop.users.map((user) => (
-                <div key={user.id} className="flex items-center justify-between gap-2">
-                  <div>
-                    <span className="text-[11px] text-zinc-300">{user.email}</span>
-                    {user.displayName && <span className="ml-2 text-[10px] text-zinc-500">{user.displayName}</span>}
-                    <span className="ml-2 text-[10px] text-zinc-600">[{user.role}]</span>
-                    {!user.isActive && <span className="ml-2 text-[10px] text-red-400">[disabilitato]</span>}
-                  </div>
-                  <UserResetLink userId={user.id} userEmail={user.email} />
+      {workshops.map((workshop) => {
+        const isProtected = !!platformWorkshopId && workshop.id === platformWorkshopId;
+        return (
+          <div key={workshop.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-zinc-100">{workshop.name}</p>
+                  {isProtected && (
+                    <span className="text-[9px] font-mono uppercase tracking-[0.15em] border border-zinc-700 text-zinc-500 rounded px-1.5 py-0.5">
+                      Piattaforma
+                    </span>
+                  )}
                 </div>
-              ))}
+                {workshop.city && <p className="text-[11px] text-zinc-500">{workshop.city}</p>}
+                <p className="text-[10px] text-zinc-600 font-mono">
+                  Creata: {new Date(workshop.createdAt).toLocaleDateString("it-IT")}
+                  {workshop.closedAt && ` · Chiusa: ${new Date(workshop.closedAt).toLocaleDateString("it-IT")}`}
+                </p>
+                {workshop.closedReason && (
+                  <p className="text-[10px] text-zinc-600">Motivo: {workshop.closedReason}</p>
+                )}
+              </div>
+              <span className={`text-[11px] font-mono ${STATUS_COLORS[workshop.status] ?? "text-zinc-400"}`}>
+                {STATUS_LABELS[workshop.status] ?? workshop.status}
+              </span>
             </div>
-          )}
 
-          <div className="border-t border-white/[0.06] pt-3">
-            <WorkshopStatusActions workshop={workshop} />
+            {workshop.users.length > 0 && (
+              <div className="border-t border-white/[0.06] pt-3 space-y-2">
+                <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-zinc-600">Utenti</p>
+                {workshop.users.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[11px] text-zinc-300">{user.email}</span>
+                      {user.displayName && <span className="ml-2 text-[10px] text-zinc-500">{user.displayName}</span>}
+                      <span className="ml-2 text-[10px] text-zinc-600">[{user.role}]</span>
+                      {!user.isActive && <span className="ml-2 text-[10px] text-red-400">[disabilitato]</span>}
+                    </div>
+                    <UserResetLink userId={user.id} userEmail={user.email} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t border-white/[0.06] pt-3">
+              <WorkshopStatusActions workshop={workshop} isProtected={isProtected} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

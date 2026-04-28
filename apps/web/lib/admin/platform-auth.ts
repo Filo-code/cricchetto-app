@@ -2,22 +2,19 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { requireDashboardSession, type DashboardSessionPayload } from "../dashboard/session";
-import { getPlatformOwnerEmails, isPlatformOwnerEmail } from "./platform-owner-emails";
-
-export { isPlatformOwnerEmail };
+import { getPlatformOwnerEmails } from "./platform-owner-emails";
+import { isPlatformSession } from "./platform-session";
 
 export async function requirePlatformOwnerSession(): Promise<DashboardSessionPayload> {
   const session = await requireDashboardSession();
 
-  const platformOwnerEmails = getPlatformOwnerEmails();
-
-  if (platformOwnerEmails.size === 0) {
-    // Env var not configured — fail closed, never open
+  if (getPlatformOwnerEmails().size === 0) {
     console.warn("[platform-auth] Criccheto_PLATFORM_OWNER_EMAILS not set, admin access blocked");
     redirect("/dashboard");
   }
 
-  if (!platformOwnerEmails.has(session.email.toLowerCase())) {
+  // Must be env session AND email in allowlist. DB users are never platform admins.
+  if (!isPlatformSession(session)) {
     redirect("/dashboard");
   }
 

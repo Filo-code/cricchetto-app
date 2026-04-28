@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { authenticateDashboardUser, clearDashboardSession } from "../../lib/dashboard/session";
+import { authenticateDashboardUser, clearDashboardSession, peekDashboardSession } from "../../lib/dashboard/session";
+import { isPlatformSession } from "../../lib/admin/platform-session";
 
 export interface LoginActionState {
   ok: boolean;
@@ -21,6 +22,10 @@ export async function loginAction(_state: LoginActionState, formData: FormData):
     };
   }
 
+  const session = await peekDashboardSession();
+  if (session && isPlatformSession(session)) {
+    redirect("/admin/workshops");
+  }
   redirect("/dashboard");
 }
 

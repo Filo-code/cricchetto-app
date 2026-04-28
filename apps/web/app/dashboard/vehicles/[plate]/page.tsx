@@ -10,7 +10,7 @@ import { ButtonLink } from "../../../../components/ui/button";
 import { Card, CardHeader } from "../../../../components/ui/card";
 import { dashboardGet } from "../../../../lib/dashboard/api-client";
 import { peekDashboardSession } from "../../../../lib/dashboard/session-core";
-import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-auth";
+import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-owner-emails";
 import type { DashboardVehicleDetail } from "../../../../lib/dashboard/types";
 
 export const dynamic = "force-dynamic";

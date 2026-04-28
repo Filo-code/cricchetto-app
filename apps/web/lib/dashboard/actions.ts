@@ -6,7 +6,7 @@ import { readWorkOrderForMutation, getWorkshopSettings, uploadWorkshopLogo } fro
 import { uploadWorkshopDocumentTemplate, deactivateWorkshopDocumentTemplate } from "./document-templates";
 import { DashboardApiError, dashboardPost } from "./api-client";
 import { peekDashboardSession } from "./session-core";
-import { isPlatformOwnerEmail } from "../admin/platform-auth";
+import { isPlatformOwnerEmail } from "../admin/platform-owner-emails";
 
 export interface DashboardActionState {
   ok: boolean;
