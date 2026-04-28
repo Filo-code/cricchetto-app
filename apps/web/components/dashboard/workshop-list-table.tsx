@@ -10,9 +10,11 @@ import {
   reactivateWorkshopAction,
   generateUserResetLinkAction,
   updateWorkshopAdminAction,
+  resetDemoWorkshopAction,
   type WorkshopStatusActionState,
   type ResetPasswordActionState,
   type UpdateWorkshopActionState,
+  type DemoResetActionState,
 } from "../../app/admin/workshops/actions";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -30,6 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
 const initialStatus: WorkshopStatusActionState = { ok: false, message: "" };
 const initialReset: ResetPasswordActionState = { ok: false, message: "" };
 const initialUpdate: UpdateWorkshopActionState = { ok: false, message: "" };
+const initialDemoReset: DemoResetActionState = { ok: false, message: "" };
 
 const inputClass =
   "w-full rounded-lg border border-white/[0.1] bg-black/20 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-accent/40 transition-colors";
@@ -224,6 +227,63 @@ function UserResetLink({ userId, userEmail }: { userId: string; userEmail: strin
   );
 }
 
+function DemoResetSection() {
+  const [state, formAction] = useActionState(resetDemoWorkshopAction, initialDemoReset);
+  const [confirmText, setConfirmText] = useState("");
+
+  const confirmed = confirmText === "RESET DEMO";
+
+  return (
+    <form action={formAction} className="border-t border-white/[0.06] pt-3 space-y-2">
+      <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-red-500/70">Reset dati demo</p>
+      <p className="text-[10px] text-zinc-600 leading-relaxed">
+        Cancella schede, veicoli, clienti, messaggi, promemoria e documenti operativi della sola officina demo.
+        Non cancella account, impostazioni, canali o template.
+      </p>
+
+      {state.ok ? (
+        <div className="space-y-1">
+          <p className="text-[11px] text-emerald-400">{state.message}</p>
+          {state.counts && (
+            <p className="text-[10px] font-mono text-zinc-600">
+              {(Object.entries(state.counts) as [string, number][])
+                .filter(([, n]) => n > 0)
+                .map(([t, n]) => `${t}: ${n}`)
+                .join(" · ")}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div>
+            <label className={labelClass}>Digita RESET DEMO per confermare</label>
+            <input
+              name="confirmation"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="RESET DEMO"
+              autoComplete="off"
+              spellCheck={false}
+              className={inputClass}
+            />
+          </div>
+          {state.message && (
+            <p className="text-[11px] text-red-400">{state.message}</p>
+          )}
+          <Button
+            type="submit"
+            variant="ghost"
+            className={`text-xs ${confirmed ? "text-red-400 hover:text-red-300" : "text-zinc-700 cursor-not-allowed"}`}
+            disabled={!confirmed}
+          >
+            Reset dati demo
+          </Button>
+        </>
+      )}
+    </form>
+  );
+}
+
 export function WorkshopListTable({
   workshops,
   platformWorkshopId,
@@ -324,6 +384,9 @@ export function WorkshopListTable({
             <div className="border-t border-white/[0.06] pt-3">
               <WorkshopStatusActions workshop={workshop} isProtected={isProtected} />
             </div>
+
+            {/* Demo reset — platform workshop only */}
+            {isProtected && <DemoResetSection />}
           </div>
         );
       })}

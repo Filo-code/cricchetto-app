@@ -6,6 +6,7 @@ import { provisionWorkshop, type ProvisionResult } from "../../../lib/admin/prov
 import { setWorkshopStatus, updateWorkshopForAdmin } from "../../../lib/admin/workshops";
 import { generatePasswordResetToken } from "../../../lib/dashboard/users";
 import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
+import { resetPlatformWorkshopData, type DemoResetCounts } from "../../../lib/admin/workshop-reset";
 
 export interface CreateWorkshopActionState {
   ok: boolean;
@@ -214,6 +215,64 @@ export async function updateWorkshopAdminAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Errore durante l'aggiornamento.",
+      stamp: Date.now(),
+    };
+  }
+}
+
+export interface DemoResetActionState {
+  ok: boolean;
+  message: string;
+  counts?: DemoResetCounts;
+  stamp?: number;
+}
+
+export async function resetDemoWorkshopAction(
+  _state: DemoResetActionState,
+  formData: FormData,
+): Promise<DemoResetActionState> {
+  // Defense-in-depth: platform owner only — never workshop DB users.
+  try {
+    await requirePlatformOwnerSession();
+  } catch {
+    return { ok: false, message: "Accesso negato.", stamp: Date.now() };
+  }
+
+  // Confirmation gate — must match exactly.
+  const confirmation = text(formData, "confirmation");
+  if (confirmation !== "RESET DEMO") {
+    return {
+      ok: false,
+      message: "Stringa di conferma errata. Digita esattamente: RESET DEMO",
+      stamp: Date.now(),
+    };
+  }
+
+  // Resolve workshop ID server-side — never from client input.
+  const platformWorkshopId = getPlatformWorkshopId();
+  if (!platformWorkshopId) {
+    return {
+      ok: false,
+      message: "Criccheto_PLATFORM_WORKSHOP_ID non configurato. Reset non disponibile.",
+      stamp: Date.now(),
+    };
+  }
+
+  try {
+    const counts = await resetPlatformWorkshopData(platformWorkshopId);
+    revalidatePath("/admin/workshops");
+    revalidatePath("/dashboard");
+    const totalRows = (Object.values(counts) as number[]).reduce((a, b) => a + b, 0);
+    return {
+      ok: true,
+      message: `Reset completato. ${totalRows} righe eliminate.`,
+      counts,
+      stamp: Date.now(),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Errore durante il reset.",
       stamp: Date.now(),
     };
   }
