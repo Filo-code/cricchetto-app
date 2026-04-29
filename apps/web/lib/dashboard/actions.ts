@@ -469,6 +469,35 @@ export async function deactivateWorkshopDocumentTemplateAction(_state: Dashboard
   }
 }
 
+export async function addWorkshopStaffMemberAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const displayName = textValue(formData, "displayName");
+  const phone = textValue(formData, "phone");
+  const role = textValue(formData, "role") || "staff";
+
+  if (!displayName) return failureState("Il nome è obbligatorio.");
+  if (!phone) return failureState("Il numero WhatsApp è obbligatorio.");
+
+  try {
+    await dashboardPost("/api/dashboard/settings/staff", { displayName, phone, role });
+    revalidatePath("/dashboard/settings");
+    return successState("Membro dello staff aggiunto.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function deactivateWorkshopStaffMemberAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
+  const staffId = textValue(formData, "staffId");
+  if (!staffId) return failureState("ID membro non valido.");
+  try {
+    await dashboardPost(`/api/dashboard/settings/staff/${encodeURIComponent(staffId)}`, { action: "deactivate" }, "PATCH");
+    revalidatePath("/dashboard/settings");
+    return successState("Membro disattivato.");
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function updateCustomerAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
   const customerId = textValue(formData, "customerId");
   const workOrderId = textValue(formData, "workOrderId");

@@ -7,17 +7,20 @@ import { WorkshopLegalForm } from "../../../components/dashboard/workshop-legal-
 import { WorkshopDocumentTemplatesForm } from "../../../components/dashboard/workshop-document-templates-form";
 import { WorkshopReadinessChecklist } from "../../../components/dashboard/workshop-readiness-checklist";
 import { WorkshopLaborRateForm } from "../../../components/dashboard/workshop-labor-rate-form";
+import { WorkshopStaffForm } from "../../../components/dashboard/workshop-staff-form";
 import { dashboardGet } from "../../../lib/dashboard/api-client";
 import type { WorkshopFullSettings } from "../../../lib/dashboard/read";
 import type { WorkshopDocumentTemplate } from "../../../lib/dashboard/document-templates";
+import type { StaffMember } from "../../../lib/staff";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [settings, templates, channelStatus] = await Promise.all([
+  const [settings, templates, channelStatus, staffMembers] = await Promise.all([
     dashboardGet<WorkshopFullSettings>("/api/dashboard/settings"),
     dashboardGet<WorkshopDocumentTemplate[]>("/api/dashboard/settings/document-templates"),
     dashboardGet<{ hasWhatsapp: boolean }>("/api/dashboard/settings/channels").catch(() => ({ hasWhatsapp: false })),
+    dashboardGet<StaffMember[]>("/api/dashboard/settings/staff").catch(() => [] as StaffMember[]),
   ]);
 
   return (
@@ -60,6 +63,8 @@ export default async function SettingsPage() {
         />
 
         <WorkshopDocumentTemplatesForm templates={templates} />
+
+        <WorkshopStaffForm staffMembers={staffMembers} />
       </div>
     </DashboardShell>
   );

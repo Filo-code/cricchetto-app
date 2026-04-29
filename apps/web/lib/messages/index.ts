@@ -6,6 +6,7 @@ import { queueOutbound } from "../outbound";
 import { parseCommand } from "../parser";
 import { normalizePlate } from "../plates";
 import { lookupRevision, listRevisionDue, updateRevisionByPlate } from "../revisions";
+import { resolveAuthorizedStaffByPhone } from "../staff";
 import { supabaseServer } from "../supabase-server";
 import { addLabor, addNote, addPart, closeWorkOrder, handleStatus, markCollected } from "../work-orders";
 import type {
@@ -31,6 +32,15 @@ export async function processNormalizedInbound(inbound: NormalizedInboundMessage
 
     if (inboundLog.duplicate) {
       return { ok: true, duplicate: true, outboundMessages: [] };
+    }
+
+    // WhatsApp staff authorization gate.
+    // Telegram (telegram_test) is internal/test — bypasses this check.
+    if (inbound.channel === "whatsapp") {
+      const staff = await resolveAuthorizedStaffByPhone(route.workshopId, inbound.senderIdentifier);
+      if (!staff) {
+        return await processCustomerInbound(route, inbound, inboundLog.id);
+      }
     }
 
     await deactivateExpiredIntake(route.workshopId, inbound.channel, inbound.senderIdentifier);
@@ -388,6 +398,23 @@ async function finalizeInboundAttachments(input: {
     actorType: "mechanic",
     actorRef: input.inbound.senderIdentifier,
   });
+}
+
+async function processCustomerInbound(
+  route: WorkshopRoute,
+  inbound: NormalizedInboundMessage,
+  messageLogId: string,
+): Promise<InboundProcessingResult> {
+  await updateInboundLog(messageLogId, "ignored");
+  const outboundMessages = await queueReplies(route, inbound, {
+    parseStatus: "ignored",
+    replies: [{
+      recipientIdentifier: inbound.senderIdentifier,
+      text: "Ciao, abbiamo ricevuto il tuo messaggio. L'officina ti risponderà appena possibile.",
+      idempotencyKey: `customer-ack:${inbound.provider}:${inbound.providerMessageId}`,
+    }],
+  });
+  return { ok: true, parseStatus: "ignored", outboundMessages };
 }
 
 async function resolveWorkshopRoute(inbound: NormalizedInboundMessage): Promise<WorkshopRoute> {
