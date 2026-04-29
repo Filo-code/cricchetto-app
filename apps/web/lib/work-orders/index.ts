@@ -6,7 +6,7 @@ import { completeIntakeAtomically } from "../intake";
 import { enqueueDocumentGeneration, processPendingDocuments } from "../documents";
 import { CUSTOMER_PHONE_VALIDATION_MESSAGE, normalizeCustomerPhone } from "../phones";
 import { assertValidPlate } from "../plates";
-import { scheduleReadyReminder, cancelReadyReminders } from "../reminders";
+import { scheduleReadyReminder, scheduleReadyPickupNotification, cancelReadyReminders } from "../reminders";
 import { supabaseServer } from "../supabase-server";
 import type { Channel, CommandExecutionResult, RecipientPolicy } from "../types";
 
@@ -294,7 +294,11 @@ export async function closeWorkOrder(input: {
       errorMessage: error instanceof Error ? error.message : String(error),
     });
   });
-  const settings = await getSettings(input.workshopId);
+  const [settings, workshopDisplayName] = await Promise.all([
+    getSettings(input.workshopId),
+    getWorkshopDisplayName(input.workshopId),
+  ]);
+  const customerPhone = workOrder.customer_phone_snapshot ? normalizeCustomerPhone(workOrder.customer_phone_snapshot) : null;
   await scheduleReadyReminder({
     workshopId: input.workshopId,
     workOrderId: workOrder.id,
@@ -302,7 +306,22 @@ export async function closeWorkOrder(input: {
     readyReminderDays: settings.ready_reminder_days,
     recipientPolicy: settings.ready_reminder_recipient_policy as RecipientPolicy,
     mechanicIdentifier: input.mechanicIdentifier,
-    customerIdentifier: workOrder.customer_phone_snapshot ? normalizeCustomerPhone(workOrder.customer_phone_snapshot) : null,
+    customerIdentifier: customerPhone,
+  });
+  scheduleReadyPickupNotification({
+    workshopId: input.workshopId,
+    workOrderId: workOrder.id,
+    readyAt,
+    customerIdentifier: customerPhone,
+    customerName: workOrder.customer_name_snapshot ?? null,
+    plate: workOrder.plate_normalized,
+    workshopDisplayName,
+  }).catch((err) => {
+    console.warn("[work-orders.closeWorkOrder] ready_pickup_schedule_failed", {
+      workshopId: input.workshopId,
+      workOrderId: workOrder.id,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
   });
 
   return reply(`${input.plate} pronta per ritiro.\nRiepilogo finale in preparazione.`, workOrder.id);
@@ -519,6 +538,15 @@ async function getSettings(workshopId: string): Promise<any> {
   }
 
   return data;
+}
+
+async function getWorkshopDisplayName(workshopId: string): Promise<string> {
+  const { data } = await supabaseServer
+    .from("workshops")
+    .select("name,display_name")
+    .eq("id", workshopId)
+    .maybeSingle();
+  return (data as any)?.display_name || (data as any)?.name || "Officina";
 }
 
 function reply(text: string, workOrderId?: string): CommandExecutionResult {

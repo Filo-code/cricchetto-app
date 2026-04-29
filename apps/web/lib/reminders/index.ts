@@ -546,7 +546,44 @@ function normalizeReminderCustomerIdentifier(channel: Channel, identifier?: stri
   return normalized || null;
 }
 
+export async function scheduleReadyPickupNotification(input: {
+  workshopId: string;
+  workOrderId: string;
+  readyAt: string;
+  customerIdentifier?: string | null;
+  customerName?: string | null;
+  plate?: string | null;
+  workshopDisplayName?: string | null;
+}): Promise<void> {
+  if (!input.customerIdentifier) return;
+  await scheduleReminder({
+    workshopId: input.workshopId,
+    reminderType: "ready_pickup",
+    recipientPolicy: "customer_only",
+    workOrderId: input.workOrderId,
+    scheduledFor: input.readyAt,
+    customerIdentifier: input.customerIdentifier,
+    metadata: {
+      ready_at: input.readyAt,
+      customer_name: input.customerName ?? null,
+      plate: input.plate ?? null,
+      workshop_display_name: input.workshopDisplayName ?? null,
+    },
+  });
+}
+
 function reminderText(reminder: DueReminderRow): string {
+  if (reminder.reminder_type === "ready_pickup") {
+    const firstName = typeof reminder.metadata?.customer_name === "string"
+      ? reminder.metadata.customer_name.trim().split(/\s+/)[0]
+      : null;
+    const plate = typeof reminder.metadata?.plate === "string" ? reminder.metadata.plate : null;
+    const officina = typeof reminder.metadata?.workshop_display_name === "string" ? reminder.metadata.workshop_display_name : null;
+    if (firstName && plate && officina) {
+      return `Ciao ${firstName}, la tua auto ${plate} è pronta per il ritiro presso ${officina}. Grazie.`;
+    }
+    return "La tua auto è pronta per il ritiro. Grazie.";
+  }
   if (reminder.reminder_type === "ready_not_collected") {
     return "Promemoria: veicolo pronto non ancora ritirato.";
   }

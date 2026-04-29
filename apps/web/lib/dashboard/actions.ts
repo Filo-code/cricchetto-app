@@ -7,6 +7,7 @@ import { uploadWorkshopDocumentTemplate, deactivateWorkshopDocumentTemplate } fr
 import { DashboardApiError, dashboardPost } from "./api-client";
 import { peekDashboardSession } from "./session-core";
 import { isPlatformOwnerEmail } from "../admin/platform-owner-emails";
+import { previewCsvImport, confirmCsvImport } from "./import";
 
 export interface DashboardActionState {
   ok: boolean;
@@ -593,4 +594,68 @@ function cleanErrorMessage(message: string): string {
     return "Operazione non completata. Controlla i dati e riprova.";
   }
   return value;
+}
+
+export interface ImportPreviewState {
+  ok: boolean;
+  stamp?: number;
+  rows_total?: number;
+  valid_rows?: number;
+  invalid_rows?: number;
+  existing_vehicles?: number;
+  would_create_customers?: number;
+  would_create_vehicles?: number;
+  errors?: Array<{ row: number; reason: string }>;
+  csvText?: string;
+  message?: string;
+}
+
+export interface ImportConfirmState {
+  ok: boolean;
+  stamp?: number;
+  created_customers?: number;
+  created_vehicles?: number;
+  skipped_existing?: number;
+  errors?: Array<{ row: number; reason: string }>;
+  message?: string;
+}
+
+export async function previewCsvImportAction(_state: ImportPreviewState, formData: FormData): Promise<ImportPreviewState> {
+  const file = formData.get("csvFile");
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false, message: "Seleziona un file CSV.", stamp: Date.now() };
+  }
+  if (file.size > 512 * 1024) {
+    return { ok: false, message: "File troppo grande. Massimo 512 KB.", stamp: Date.now() };
+  }
+  try {
+    const settings = await getWorkshopSettings();
+    const csvText = await file.text();
+    const result = await previewCsvImport(csvText, settings.id);
+    return { ok: true, ...result, stamp: Date.now() };
+  } catch (error) {
+    return { ok: false, message: actionErrorMessage(error), stamp: Date.now() };
+  }
+}
+
+export async function confirmCsvImportAction(_state: ImportConfirmState, formData: FormData): Promise<ImportConfirmState> {
+  const confirmText = (formData.get("confirmText") as string | null)?.trim();
+  if (confirmText !== "IMPORTA DATI") {
+    return { ok: false, message: "Testo di conferma non corretto. Digita esattamente: IMPORTA DATI", stamp: Date.now() };
+  }
+  const csvText = (formData.get("csvText") as string | null) ?? "";
+  if (!csvText.trim()) {
+    return { ok: false, message: "Dati CSV non trovati. Ripeti l'analisi.", stamp: Date.now() };
+  }
+  try {
+    const settings = await getWorkshopSettings();
+    const result = await confirmCsvImport(csvText, settings.id);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/vehicles");
+    revalidatePath("/dashboard/search");
+    revalidatePath("/dashboard/settings");
+    return { ok: true, ...result, stamp: Date.now() };
+  } catch (error) {
+    return { ok: false, message: actionErrorMessage(error), stamp: Date.now() };
+  }
 }

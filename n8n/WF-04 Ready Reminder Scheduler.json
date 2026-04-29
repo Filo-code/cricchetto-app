@@ -35,7 +35,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ limit: 20, reminderTypes: ['ready_not_collected'] }) }}",
+        "jsonBody": "={{ JSON.stringify({ limit: 20, reminderTypes: ['ready_pickup', 'ready_not_collected'] }) }}",
         "options": {}
       },
       "id": "a4f3ac5d-d9ec-47cf-9626-449f6bbc6231",

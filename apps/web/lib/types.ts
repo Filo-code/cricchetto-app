@@ -39,6 +39,7 @@ export const PROVIDER_STATUSES = [
 ] as const;
 
 export const REMINDER_TYPES = [
+  "ready_pickup",
   "ready_not_collected",
   "revision_due_35d",
   "revision_due_30d",
