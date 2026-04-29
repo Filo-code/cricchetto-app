@@ -15,6 +15,7 @@ import type {
   DashboardRevision,
   DashboardSearchResult,
   DashboardSearchVehicle,
+  DashboardTodayCounts,
   DashboardTotals,
   DashboardVehicleDetail,
   DashboardWorkOrderDetail,
@@ -41,12 +42,13 @@ interface DashboardRevisionState {
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
   const workshop = await readDashboardWorkshop();
-  const [activeWorkOrders, inProgressWorkOrders, readyWorkOrders, recentActivity, upcomingRevisions] = await Promise.all([
+  const [activeWorkOrders, inProgressWorkOrders, readyWorkOrders, recentActivity, upcomingRevisions, todayCounts] = await Promise.all([
     readWorkOrderSummaries(workshop.id, ACTIVE_STATUSES, 12),
     readWorkOrderSummaries(workshop.id, ["in_progress"], 8),
     readWorkOrderSummaries(workshop.id, ["ready"], 8),
     readRecentActivity(workshop.id, 10),
     readUpcomingRevisions(workshop.id, workshop.timezone, 12),
+    readTodayCounts(workshop.id, workshop.timezone),
   ]);
 
   return {
@@ -58,6 +60,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       ready: readyWorkOrders.length,
       overdueRevisions: countOverdue(upcomingRevisions, workshop.timezone),
     },
+    todayCounts,
     activeWorkOrders,
     inProgressWorkOrders,
     readyWorkOrders,
@@ -1026,6 +1029,47 @@ export async function readDashboardSearchSuggestions(query: string): Promise<Das
   if (clean.length < 2) return [];
   const results = await readSearchVehicles(workshop.id, clean);
   return results.slice(0, 6);
+}
+
+async function readTodayCounts(workshopId: string, timezone: string): Promise<DashboardTodayCounts> {
+  const today = getLocalDate(timezone);
+  const todayStart = `${today}T00:00:00.000Z`;
+
+  const [enteredResult, readyResult, staleResult] = await Promise.all([
+    supabaseServer
+      .from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("workshop_id", workshopId)
+      .in("status", ACTIVE_STATUSES)
+      .gte("created_at", todayStart),
+    supabaseServer
+      .from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("workshop_id", workshopId)
+      .eq("status", "ready")
+      .gte("ready_at", todayStart),
+    supabaseServer
+      .from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("workshop_id", workshopId)
+      .in("status", ["accepted", "in_progress"])
+      .lte("updated_at", addDays(today, -3)),
+  ]);
+
+  const [awaitingResult] = await Promise.all([
+    supabaseServer
+      .from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("workshop_id", workshopId)
+      .eq("status", "ready"),
+  ]);
+
+  return {
+    enteredToday: enteredResult.count ?? 0,
+    readyToday: readyResult.count ?? 0,
+    awaitingPickup: awaitingResult.count ?? 0,
+    staleWorkOrders: staleResult.count ?? 0,
+  };
 }
 
 export async function readWorkshopChannelStatus(workshopId: string): Promise<{ hasWhatsapp: boolean }> {

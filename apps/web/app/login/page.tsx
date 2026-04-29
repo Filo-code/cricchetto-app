@@ -1,54 +1,8 @@
-"use client";
-
-import { Suspense, useActionState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { loginAction, type LoginActionState } from "./actions";
-
-const initialState: LoginActionState = { ok: false, message: "" };
-
-function LoginForm() {
-  const [state, formAction] = useActionState(loginAction, initialState);
-  const searchParams = useSearchParams();
-  const setupDone = searchParams.get("setup") === "done";
-  const accountSuspended = searchParams.get("account") === "suspended";
-
-  return (
-    <form action={formAction} className="space-y-4">
-      {setupDone && (
-        <p className="rounded-xl border border-success/25 bg-success-soft px-4 py-3 text-sm text-emerald-200">
-          Password impostata. Accedi con le tue credenziali.
-        </p>
-      )}
-      {accountSuspended && (
-        <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-          L&apos;account officina è sospeso o chiuso. Contatta l&apos;amministratore Filò per ulteriori informazioni.
-        </p>
-      )}
-      <label className="block">
-        <span className="mb-2 block text-[12px] font-mono font-medium uppercase tracking-[0.15em] text-zinc-500">Email / utente</span>
-        <Input name="email" type="text" autoComplete="username" required />
-      </label>
-      <label className="block">
-        <span className="mb-2 block text-[12px] font-mono font-medium uppercase tracking-[0.15em] text-zinc-500">Password</span>
-        <Input name="password" type="password" autoComplete="current-password" required />
-      </label>
-
-      {state.message ? (
-        <p className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-red-200">
-          {state.message}
-        </p>
-      ) : null}
-
-      <Button type="submit" variant="primary" className="mt-2 w-full justify-center">
-        Accedi
-      </Button>
-    </form>
-  );
-}
+import { LoginForm, WhatsAppSupportButton } from "./login-form";
 
 export default function LoginPage() {
+  const supportNumber = process.env.Criccheto_SUPPORT_WHATSAPP_NUMBER ?? null;
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       {/* Filò-style ambient accent orb */}
@@ -78,10 +32,12 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <Suspense fallback={null}>
-            <LoginForm />
-          </Suspense>
+          <LoginForm showForgotPassword={!!(process.env.Criccheto_SMTP_HOST && process.env.Criccheto_SMTP_USER && process.env.Criccheto_SMTP_PASS)} />
         </div>
+
+        {supportNumber ? (
+          <WhatsAppSupportButton number={supportNumber} />
+        ) : null}
 
         {/* Footer branding */}
         <p className="mt-6 text-center text-[10px] font-mono tracking-[0.15em] uppercase text-zinc-700">

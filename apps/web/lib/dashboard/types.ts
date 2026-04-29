@@ -51,6 +51,13 @@ export interface DashboardRevision {
   activeWorkOrderStatus: WorkOrderStatus | null;
 }
 
+export interface DashboardTodayCounts {
+  enteredToday: number;
+  readyToday: number;
+  awaitingPickup: number;
+  staleWorkOrders: number;
+}
+
 export interface DashboardOverview {
   workshop: {
     id: string;
@@ -65,6 +72,7 @@ export interface DashboardOverview {
     ready: number;
     overdueRevisions: number;
   };
+  todayCounts: DashboardTodayCounts;
   activeWorkOrders: DashboardWorkOrderSummary[];
   inProgressWorkOrders: DashboardWorkOrderSummary[];
   readyWorkOrders: DashboardWorkOrderSummary[];

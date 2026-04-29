@@ -10,6 +10,7 @@ import { WorkshopReadinessChecklist } from "../../../components/dashboard/worksh
 import { WorkshopLaborRateForm } from "../../../components/dashboard/workshop-labor-rate-form";
 import { WorkshopStaffForm } from "../../../components/dashboard/workshop-staff-form";
 import { WorkshopImportForm } from "../../../components/dashboard/workshop-import-form";
+import { WorkshopExportButtons } from "../../../components/dashboard/workshop-export-buttons";
 import { dashboardGet } from "../../../lib/dashboard/api-client";
 import type { WorkshopFullSettings } from "../../../lib/dashboard/read";
 import type { WorkshopDocumentTemplate } from "../../../lib/dashboard/document-templates";
@@ -105,6 +106,13 @@ export default async function SettingsPage() {
           description="Importa clienti e veicoli da un vecchio gestionale tramite CSV."
         >
           <WorkshopImportForm />
+        </SettingsSection>
+
+        <SettingsSection
+          heading="Esportazione dati"
+          description="Scarica i dati della tua officina in formato CSV."
+        >
+          <WorkshopExportButtons />
         </SettingsSection>
 
       </div>
