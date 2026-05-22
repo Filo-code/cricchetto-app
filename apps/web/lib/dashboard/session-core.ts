@@ -11,6 +11,7 @@ export interface DashboardSessionPayload {
   role: "owner" | "staff";
   workshopId: string;
   expiresAt: number;
+  sessionVersion: number;
 }
 
 export function verifyDashboardSession(value: string | undefined): DashboardSessionPayload | null {
@@ -36,6 +37,7 @@ export function verifyDashboardSession(value: string | undefined): DashboardSess
     || typeof parsed.workshopId !== "string"
     || typeof parsed.expiresAt !== "number"
     || parsed.expiresAt <= Math.floor(Date.now() / 1000)
+    || typeof parsed.sessionVersion !== "number"
   ) {
     return null;
   }
@@ -44,9 +46,6 @@ export function verifyDashboardSession(value: string | undefined): DashboardSess
 }
 
 export function signPayload(payload: DashboardSessionPayload): string {
-  if (!process.env.Criccheto_DASHBOARD_SESSION_SECRET && process.env.NODE_ENV === "production") {
-    console.warn("[session-core] Criccheto_DASHBOARD_SESSION_SECRET not set — falling back to shared secret for session signing. Set a dedicated session secret in production.");
-  }
   const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   return `${encodedPayload}.${hmac(encodedPayload)}`;
 }
@@ -57,11 +56,17 @@ export async function peekDashboardSession(): Promise<DashboardSessionPayload | 
 }
 
 function hmac(value: string): string {
-  const secret = process.env.Criccheto_DASHBOARD_SESSION_SECRET
-    ?? process.env.Criccheto_DASHBOARD_API_SECRET
-    ?? process.env.Criccheto_INTERNAL_API_SECRET;
+  const secret = process.env.Criccheto_DASHBOARD_SESSION_SECRET;
   if (!secret) {
-    throw new Error("Criccheto_DASHBOARD_SESSION_SECRET or Criccheto_INTERNAL_API_SECRET is required");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Criccheto_DASHBOARD_SESSION_SECRET is required in production");
+    }
+    // Dev-only fallback — not allowed in production
+    const devFallback = process.env.Criccheto_DASHBOARD_API_SECRET ?? process.env.Criccheto_INTERNAL_API_SECRET;
+    if (!devFallback) {
+      throw new Error("Criccheto_DASHBOARD_SESSION_SECRET (or dev fallback Criccheto_INTERNAL_API_SECRET) is required");
+    }
+    return createHmac("sha256", devFallback).update(value).digest("base64url");
   }
   return createHmac("sha256", secret).update(value).digest("base64url");
 }

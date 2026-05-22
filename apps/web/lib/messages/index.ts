@@ -1,7 +1,7 @@
 import { attachMessageAttachmentsToIntake, attachMessageAttachmentsToWorkOrder, saveInboundAttachments } from "../attachments";
 import { buildSendDocumentCommandResult } from "../documents";
 import { AppError, getErrorMessage } from "../errors";
-import { deactivateExpiredIntake, continueIntake, getActiveIntake, startIntake } from "../intake";
+import { deactivateExpiredIntake, continueIntake, getActiveIntake, startIntake, type IntakeSession } from "../intake";
 import { queueOutbound } from "../outbound";
 import { parseCommand } from "../parser";
 import { normalizePlate } from "../plates";
@@ -22,7 +22,7 @@ import type {
 export async function processNormalizedInbound(inbound: NormalizedInboundMessage): Promise<InboundProcessingResult> {
   let route: WorkshopRoute | undefined;
   let inboundLog: { id: string; duplicate: boolean } | undefined;
-  let activeIntake: any | null = null;
+  let activeIntake: IntakeSession | null = null;
   const hasText = inbound.text.trim().length > 0;
   const hasAttachments = (inbound.attachments?.length ?? 0) > 0;
 
@@ -32,6 +32,13 @@ export async function processNormalizedInbound(inbound: NormalizedInboundMessage
 
     if (inboundLog.duplicate) {
       return { ok: true, duplicate: true, outboundMessages: [] };
+    }
+
+    // Block telegram_test in production — it has no staff auth gate.
+    if (inbound.channel === "telegram_test" && process.env.NODE_ENV === "production") {
+      throw new AppError("telegram_test channel is not allowed in production", {
+        parseStatus: "ignored",
+      });
     }
 
     // WhatsApp staff authorization gate.

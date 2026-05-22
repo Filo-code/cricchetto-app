@@ -51,6 +51,17 @@ export async function recordOutboundResult(input: {
   providerMessageId?: string;
   errorMessage?: string;
 }): Promise<void> {
+  // Resolve workshopId first so the UPDATE is scoped to the correct tenant.
+  const { data: existing, error: readError } = await supabaseServer
+    .from("message_logs")
+    .select("workshop_id")
+    .eq("id", input.messageLogId)
+    .eq("direction", "outbound")
+    .maybeSingle();
+
+  if (readError) throw new Error(`Failed to read outbound message log: ${readError.message}`);
+  if (!existing) throw new AppError("Outbound message log not found", { statusCode: 404, parseStatus: "not_found" });
+
   const { data, error } = await supabaseServer
     .from("message_logs")
     .update({
@@ -59,6 +70,7 @@ export async function recordOutboundResult(input: {
       error_message: input.errorMessage ?? null,
     })
     .eq("id", input.messageLogId)
+    .eq("workshop_id", existing.workshop_id)
     .eq("direction", "outbound")
     .select("id")
     .maybeSingle();
@@ -72,10 +84,21 @@ export async function recordOutboundResult(input: {
 }
 
 export async function markOutboundSending(messageLogId: string): Promise<void> {
+  const { data: existing, error: readError } = await supabaseServer
+    .from("message_logs")
+    .select("workshop_id")
+    .eq("id", messageLogId)
+    .eq("direction", "outbound")
+    .maybeSingle();
+
+  if (readError) throw new Error(`Failed to read outbound message log: ${readError.message}`);
+  if (!existing) throw new AppError("Outbound message log not found", { statusCode: 404, parseStatus: "not_found" });
+
   const { data, error } = await supabaseServer
     .from("message_logs")
     .update({ provider_status: "sending" })
     .eq("id", messageLogId)
+    .eq("workshop_id", existing.workshop_id)
     .eq("direction", "outbound")
     .select("id")
     .maybeSingle();

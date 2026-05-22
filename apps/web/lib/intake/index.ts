@@ -5,6 +5,19 @@ import { CUSTOMER_PHONE_VALIDATION_MESSAGE, normalizeCustomerPhone } from "../ph
 import { supabaseServer } from "../supabase-server";
 import type { Channel, CommandExecutionResult, IntakeStep } from "../types";
 
+export interface IntakeSession {
+  id: string;
+  workshop_id: string;
+  channel: string;
+  sender_identifier: string;
+  plate_normalized: string;
+  current_step: IntakeStep;
+  data: Record<string, unknown>;
+  is_active: boolean;
+  expires_at: string;
+  created_at: string;
+}
+
 const INTAKE_STEPS: IntakeStep[] = ["vehicle_model", "reported_issue", "kilometers", "customer_name", "customer_phone"];
 const STEP_PROMPTS: Record<IntakeStep, string> = {
   vehicle_model: "Modello auto?",
@@ -82,7 +95,7 @@ export async function cleanupExpiredIntakes(): Promise<number> {
   return data?.length ?? 0;
 }
 
-export async function getActiveIntake(workshopId: string, channel: Channel, senderIdentifier: string): Promise<any | null> {
+export async function getActiveIntake(workshopId: string, channel: Channel, senderIdentifier: string): Promise<IntakeSession | null> {
   const { data, error } = await supabaseServer
     .from("intake_sessions")
     .select("*")
@@ -133,7 +146,7 @@ export async function startIntake(input: {
 
 export async function continueIntake(input: {
   workshopId: string;
-  intake: any;
+  intake: IntakeSession;
   answer: string;
   actorRef: string;
   messageContext?: IntakeMessageContext;

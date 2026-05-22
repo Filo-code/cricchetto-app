@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { timingSafeEqualString } from "../crypto";
 import { isPlatformSession } from "../admin/platform-session";
 import { readDashboardWorkshop } from "./read";
-import { findWorkshopUserByEmail, verifyPassword } from "./users";
+import { findWorkshopUserByEmail, findWorkshopUserById, verifyPassword } from "./users";
 import {
   COOKIE_NAME,
   type DashboardSessionPayload,
@@ -42,6 +42,15 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
     redirect("/login?account=suspended");
   }
 
+  // Validate session_version against DB to invalidate sessions after password change.
+  // Skip for legacy env-var sessions (sub="env") which have no workshop_users row.
+  if (session.sub !== "env") {
+    const dbUser = await findWorkshopUserById(session.sub);
+    if (!dbUser || !dbUser.isActive || dbUser.sessionVersion !== session.sessionVersion) {
+      redirect("/login");
+    }
+  }
+
   return session;
 }
 
@@ -64,6 +73,7 @@ export async function authenticateDashboardUser(input: { email: string; password
       role: dbUser.role,
       workshopId: dbUser.workshopId,
       expiresAt: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+      sessionVersion: dbUser.sessionVersion,
     };
   }
 
@@ -85,6 +95,7 @@ export async function authenticateDashboardUser(input: { email: string; password
         role: "owner",
         workshopId: workshop.id,
         expiresAt: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+        sessionVersion: 0,
       };
     }
   }
@@ -96,7 +107,7 @@ export async function authenticateDashboardUser(input: { email: string; password
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, signPayload(payload), {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
@@ -107,7 +118,7 @@ export async function clearDashboardSession(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 0,

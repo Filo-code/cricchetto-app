@@ -270,6 +270,12 @@ export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
   const workshopId = session?.workshopId ?? configuredWorkshopId;
 
+  if (!workshopId) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("No workshop resolved from session or configuration — refusing first-by-date fallback in production");
+    }
+  }
+
   let workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").order("created_at", { ascending: true }).limit(1);
   if (workshopId) {
     workshopQuery = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone").eq("id", workshopId).limit(1);
@@ -319,7 +325,17 @@ export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
   };
 }
 
+const ALLOWED_LOGO_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
+
 export async function uploadWorkshopLogo(workshopId: string, file: File): Promise<string> {
+  if (!ALLOWED_LOGO_MIME.has(file.type)) {
+    throw new Error("Tipo file non supportato. Usa JPG, PNG, WebP o GIF.");
+  }
+  if (file.size > MAX_LOGO_SIZE_BYTES) {
+    throw new Error("Logo troppo grande (max 5 MB).");
+  }
+
   const { Buffer } = await import("node:buffer");
   const BUCKET = process.env.Criccheto_BRANDING_BUCKET || "workshop-branding";
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
@@ -345,10 +361,16 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
 }
 
 export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null; status: string }> {
-  // Resolve workshopId: session > env-var > first-by-created_at (dev/legacy fallback)
+  // Resolve workshopId: session > env-var. No first-by-date fallback in production.
   const session = await peekDashboardSession();
   const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
   const workshopId = session?.workshopId ?? configuredWorkshopId;
+
+  if (!workshopId) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("No workshop resolved from session or configuration — refusing first-by-date fallback in production");
+    }
+  }
 
   let query = supabaseServer.from("workshops").select("id,name,display_name,logo_url,timezone,status").order("created_at", { ascending: true }).limit(1);
   if (workshopId) {

@@ -4,9 +4,9 @@ import { AppError } from "../errors";
 const DASHBOARD_SECRET_HEADER = "x-dashboard-secret";
 
 export function requireDashboardRequest(request: Request): void {
-  const expected = process.env.Criccheto_DASHBOARD_API_SECRET ?? process.env.Criccheto_INTERNAL_API_SECRET;
+  const expected = process.env.Criccheto_DASHBOARD_API_SECRET;
   if (!expected) {
-    throw new AppError("Criccheto_DASHBOARD_API_SECRET or Criccheto_INTERNAL_API_SECRET is required", {
+    throw new AppError("Criccheto_DASHBOARD_API_SECRET is required", {
       statusCode: 500,
       parseStatus: "error",
     });
@@ -19,9 +19,9 @@ export function requireDashboardRequest(request: Request): void {
 }
 
 export function dashboardServerHeaders(): HeadersInit {
-  const secret = process.env.Criccheto_DASHBOARD_API_SECRET ?? process.env.Criccheto_INTERNAL_API_SECRET;
+  const secret = process.env.Criccheto_DASHBOARD_API_SECRET;
   if (!secret) {
-    throw new Error("Criccheto_DASHBOARD_API_SECRET or Criccheto_INTERNAL_API_SECRET is required");
+    throw new Error("Criccheto_DASHBOARD_API_SECRET is required");
   }
 
   return {

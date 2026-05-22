@@ -58,9 +58,13 @@ export const whatsappProvider: ProviderAdapter = {
     };
   },
   async sendTextMessage(): Promise<ProviderSendResult> {
+    // Outbound WhatsApp dispatch is handled entirely by n8n (WF-03).
+    // The backend never calls this directly — messages are queued in message_logs
+    // with provider_status="queued" and n8n polls and sends them.
+    // This method exists to satisfy the ProviderAdapter interface.
     return {
       accepted: false,
-      errorMessage: "WhatsApp send adapter is not configured",
+      errorMessage: "WhatsApp outbound is dispatched by n8n, not called directly",
     };
   },
 };

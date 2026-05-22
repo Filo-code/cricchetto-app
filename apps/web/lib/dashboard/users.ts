@@ -12,11 +12,11 @@ function scryptAsync(password: string, salt: string, keylen: number, options: { 
   );
 }
 
-const SCRYPT_N = 16384;
+const SCRYPT_N = 65536;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEY_LEN = 64;
-const TOKEN_TTL_SECONDS = 72 * 60 * 60; // 72 h
+const TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 h
 
 export interface WorkshopUser {
   id: string;
@@ -26,6 +26,7 @@ export interface WorkshopUser {
   passwordHash: string | null;
   role: "owner" | "staff";
   isActive: boolean;
+  sessionVersion: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,7 +64,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
 export async function findWorkshopUserByEmail(email: string): Promise<WorkshopUser | null> {
   const { data, error } = await supabaseServer
     .from("workshop_users")
-    .select("id,workshop_id,email,display_name,password_hash,role,is_active")
+    .select("id,workshop_id,email,display_name,password_hash,role,is_active,session_version")
     .eq("is_active", true)
     .eq("email", email.trim().toLowerCase())
     .maybeSingle();
@@ -79,13 +80,14 @@ export async function findWorkshopUserByEmail(email: string): Promise<WorkshopUs
     passwordHash: data.password_hash ?? null,
     role: data.role as "owner" | "staff",
     isActive: data.is_active,
+    sessionVersion: (data as any).session_version ?? 0,
   };
 }
 
 export async function findWorkshopUserById(id: string): Promise<WorkshopUser | null> {
   const { data, error } = await supabaseServer
     .from("workshop_users")
-    .select("id,workshop_id,email,display_name,password_hash,role,is_active")
+    .select("id,workshop_id,email,display_name,password_hash,role,is_active,session_version")
     .eq("id", id)
     .maybeSingle();
 
@@ -100,6 +102,7 @@ export async function findWorkshopUserById(id: string): Promise<WorkshopUser | n
     passwordHash: data.password_hash ?? null,
     role: data.role as "owner" | "staff",
     isActive: data.is_active,
+    sessionVersion: (data as any).session_version ?? 0,
   };
 }
 
@@ -177,21 +180,19 @@ export async function generatePasswordResetToken(userId: string): Promise<{ toke
 
 export async function consumePasswordResetToken(rawToken: string): Promise<WorkshopUser | null> {
   const tokenHash = hashToken(rawToken);
+
+  // Single atomic UPDATE: only succeeds if token exists, unused, and not expired.
+  // Eliminates TOCTOU race where two concurrent requests both pass a SELECT check.
   const { data, error } = await supabaseServer
     .from("password_reset_tokens")
-    .select("id,user_id,expires_at,used_at")
+    .update({ used_at: new Date().toISOString() })
     .eq("token_hash", tokenHash)
+    .is("used_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .select("user_id")
     .maybeSingle();
 
   if (error || !data) return null;
-  if (data.used_at) return null;
-  if (new Date(data.expires_at) < new Date()) return null;
-
-  // Mark used
-  await supabaseServer
-    .from("password_reset_tokens")
-    .update({ used_at: new Date().toISOString() })
-    .eq("id", data.id);
 
   return findWorkshopUserById(data.user_id);
 }
