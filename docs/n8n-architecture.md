@@ -8,10 +8,11 @@ n8n is the runtime orchestration layer. Backend is the domain logic layer. Supab
 
 - `WF-01_Inbound_Channel_Entry`: receives Meta WhatsApp Cloud API and Telegram Bot API inbound events, normalizes command-bearing text payloads, safely ignores status/non-text provider events plus Telegram `callback_query` updates, and calls backend only for normalized text commands.
 - `WF-03_Outbound_Message_Dispatch`: requires `x-dispatch-secret`, sends queued outbound messages through Meta WhatsApp Cloud API or Telegram Bot API, and reports provider accept/fail result to backend.
-- `WF-04_Ready_Reminder_Scheduler`: calls backend for due `ready_not_collected` reminders and dispatches returned outbound jobs.
+- `WF-04_Ready_Reminder_Scheduler`: calls backend for due `ready_pickup` and `ready_not_collected` reminders and dispatches returned outbound jobs.
 - `WF-05_Revision_Reminder_Scheduler`: calls backend for due revision reminders and dispatches returned outbound jobs.
 - `WF-06_Document_Worker`: calls backend document worker. Backend owns claim, deterministic minimal PDF generation, private Supabase Storage upload, and final document status updates.
 - `WF-07_Intake_Expiry_Cleanup`: calls backend expired-intake cleanup.
+- `WF-08_Outbound_Recovery_Scheduler`: calls backend stuck-dispatch recovery and re-dispatches returned outbound jobs.
 
 All committed workflow JSON exports are stored inactive (`active: false`) and must be activated by the operator only after environment variables and secrets are configured.
 
@@ -45,6 +46,7 @@ Used endpoints:
 - `POST /api/internal/reminders/run`
 - `POST /api/internal/documents/run`
 - `POST /api/internal/intake/expire-cleanup`
+- `POST /api/internal/outbound/recover-stuck`
 
 ## Inbound Command Flow
 
@@ -62,6 +64,7 @@ Used endpoints:
 3. Backend selects due reminders and returns `queued` outbound jobs shaped as `{ messageLogId, channel, provider, recipientIdentifier, text, relatedReminderId }`.
 4. Workflow sends returned queued jobs to WF-03.
 5. WF-03 dispatches and reports result.
+6. WF-08 periodically calls `/api/internal/outbound/recover-stuck` to recover stale `queued`/`sending` outbound rows and stale reminder dispatches.
 
 Current runtime note: `recipient_policy = both` can return two queued outbound jobs for the same `relatedReminderId`. WF-04 and WF-05 dispatch every queued item returned by backend.
 
@@ -69,7 +72,7 @@ Current runtime note: `recipient_policy = both` can return two queued outbound j
 
 WF-06 calls `/api/internal/documents/run`.
 
-Current repo state: backend claims pending document rows, generates deterministic minimal PDFs, uploads them to private Supabase Storage, and updates rows to `generated` or `failed`. n8n only schedules the worker.
+Current repo state: backend claims pending document rows, generates deterministic minimal PDFs, uploads them to private Supabase Storage, and updates rows to `ready` or `failed`. n8n only schedules the worker.
 
 Expected backend response:
 
@@ -82,7 +85,7 @@ Expected backend response:
   "documents": [
     {
       "id": "uuid",
-      "status": "generated",
+      "status": "ready",
       "document_type": "final_summary",
       "work_order_id": "uuid",
       "version": 1,
@@ -107,3 +110,4 @@ Expected backend response:
 - WhatsApp verification challenge is handled in WF-01.
 - WhatsApp request signature verification must be enforced upstream before n8n because Meta HMAC validation requires the exact raw request body. The trusted upstream verifier forwards only verified WhatsApp POST requests with `x-upstream-verified-meta-signature: 1`; WF-01 rejects WhatsApp POSTs without that header. The deprecated backend fallback webhook verifies `x-hub-signature-256` with Node.js `crypto` and `Criccheto_WHATSAPP_APP_SECRET`.
 - WF-03 reports `accepted` or `failed` only. WhatsApp delivery callbacks are not implemented in this package. Telegram Bot API delivery callbacks are not available for this MVP path.
+

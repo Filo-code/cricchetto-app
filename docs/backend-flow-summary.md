@@ -18,6 +18,7 @@
 11. Outbound reply is queued in `message_logs` with `provider_status = queued`.
 12. n8n dispatches queued outbound messages through WF-03.
 13. n8n reports provider result to `/api/internal/messages/send-outbound-result`.
+14. WF-08 periodically calls `/api/internal/outbound/recover-stuck` to retry stale outbound rows and clean up stale reminder dispatch state.
 
 ## Parser and Command Flow
 
@@ -98,6 +99,7 @@ Reminder finalization:
 
 - sets work order to `ready`
 - enqueues final summary document
+- schedules immediate `ready_pickup` customer reminder
 - schedules `ready_not_collected` reminder from workshop settings
 
 `RITIRATA`:
@@ -124,7 +126,7 @@ Reminder finalization:
 - WhatsApp outbound uses Meta WhatsApp Cloud API.
 - Telegram outbound uses Telegram Bot API.
 - WF-02 is deprecated; backend owns command routing.
-- WF-06 only triggers backend document processing. Backend claims pending documents, generates a deterministic minimal PDF, uploads it to private Supabase Storage, and updates each document to `generated` or `failed`.
+- WF-06 only triggers backend document processing. Backend claims pending documents, generates a deterministic minimal PDF, uploads it to private Supabase Storage, and updates each document to `ready` or `failed`.
 - Document storage uses `Criccheto_DOCUMENTS_BUCKET` when set and defaults to `documents`.
 - Direct provider-to-backend webhooks are deprecated fallback paths only.
 - The WhatsApp fallback verifies Meta `x-hub-signature-256` against the exact raw request body using Node.js `crypto` and `Criccheto_WHATSAPP_APP_SECRET`.
@@ -132,3 +134,4 @@ Reminder finalization:
 - n8n WF-01 cannot safely validate Meta HMAC without guaranteed raw-body access, so production WhatsApp POST ingress must be protected by upstream Meta signature verification. The upstream verifier must forward verified requests with `x-upstream-verified-meta-signature: 1`; WF-01 rejects WhatsApp POSTs without it.
 - Telegram `callback_query` updates are ignored in WF-01 and do not enter backend command processing.
 - Date handling uses native `Date` and `Intl.DateTimeFormat`; no Luxon dependency is required.
+

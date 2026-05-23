@@ -3,6 +3,8 @@ import { queueOutbound } from "../outbound";
 import { supabaseServer } from "../supabase-server";
 import type { Channel, RecipientPolicy, ReminderType } from "../types";
 
+const REMINDER_STALE_MINUTES = 10;
+
 interface ReminderDispatchRoute {
   channel: Channel;
   provider: string;
@@ -50,6 +52,11 @@ export interface ReminderRunResult {
     text: string;
     relatedReminderId: string;
   }>;
+}
+
+export interface RecoverStuckRemindersResult {
+  scanned: number;
+  recovered: number;
 }
 
 export interface ReminderScheduleInput {
@@ -126,7 +133,7 @@ export async function cancelRevisionReminders(workshopId: string, vehicleId: str
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
     .eq("workshop_id", workshopId)
     .eq("vehicle_id", vehicleId)
-    .in("reminder_type", ["revision_due_30d", "revision_due_7d", "revision_due_1d"])
+    .in("reminder_type", ["revision_due_35d", "revision_due_30d", "revision_due_7d", "revision_due_1d"])
     .in("status", ["scheduled", "sending"]);
 
   if (error) {
@@ -514,11 +521,15 @@ async function markReminderSendingIfScheduled(
   reminderId: string,
   metadata: Record<string, unknown>,
 ): Promise<boolean> {
+  const nextMetadata = {
+    ...metadata,
+    dispatch_started_at: new Date().toISOString(),
+  };
   const { data, error } = await supabaseServer
     .from("reminders")
     .update({
       status: "sending",
-      metadata,
+      metadata: nextMetadata,
     })
     .eq("id", reminderId)
     .eq("status", "scheduled")
@@ -639,3 +650,69 @@ function deriveReminderStatusFromTargets(targets: Record<string, Record<string, 
   }
   return "failed";
 }
+
+export async function recoverStuckSendingReminders(limit = 20): Promise<RecoverStuckRemindersResult> {
+  const { data, error } = await supabaseServer
+    .from("reminders")
+    .select("id,metadata")
+    .eq("status", "sending")
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to read stuck reminders: ${error.message}`);
+  }
+
+  let recovered = 0;
+  const reminders = data ?? [];
+
+  for (const reminder of reminders) {
+    const metadata = reminder.metadata && typeof reminder.metadata === "object" && !Array.isArray(reminder.metadata)
+      ? reminder.metadata as Record<string, unknown>
+      : {};
+    const dispatchStartedAt = typeof metadata.dispatch_started_at === "string" ? metadata.dispatch_started_at : null;
+    if (!dispatchStartedAt || Date.now() - Date.parse(dispatchStartedAt) < REMINDER_STALE_MINUTES * 60 * 1000) {
+      continue;
+    }
+
+    const { data: activeLogs, error: logError } = await supabaseServer
+      .from("message_logs")
+      .select("id")
+      .eq("related_reminder_id", reminder.id)
+      .eq("direction", "outbound")
+      .in("provider_status", ["queued", "sending"])
+      .limit(1);
+
+    if (logError) {
+      throw new Error(`Failed to read active reminder logs: ${logError.message}`);
+    }
+    if ((activeLogs ?? []).length > 0) {
+      continue;
+    }
+
+    const targets = normalizeReminderTargetMetadata(metadata.dispatch_targets);
+    const status = deriveReminderStatusFromTargets(targets);
+    const terminalStatus = status === "sending" ? "failed" : status;
+    const nextMetadata = {
+      ...metadata,
+      dispatch_recovered_at: new Date().toISOString(),
+      ...(terminalStatus === "failed" && status === "sending"
+        ? { last_dispatch_error: "Recovered stale reminder without active outbound dispatch" }
+        : {}),
+    };
+
+    await updateReminderStatus(
+      reminder.id,
+      terminalStatus,
+      nextMetadata,
+      ["sent", "partial"].includes(terminalStatus) ? new Date().toISOString() : null,
+    );
+    recovered += 1;
+  }
+
+  return {
+    scanned: reminders.length,
+    recovered,
+  };
+}
+

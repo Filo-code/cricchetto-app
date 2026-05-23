@@ -169,7 +169,7 @@ Request:
 ```json
 {
   "limit": 20,
-  "reminderTypes": ["ready_not_collected"]
+  "reminderTypes": ["ready_pickup", "ready_not_collected"]
 }
 ```
 
@@ -219,6 +219,48 @@ Reminder recipient behavior:
 - Reminder metadata stores per-target dispatch state in `dispatch_targets`.
 - Provider results transition a reminder to `sent` when every required target is accepted, `partial` when at least one target is accepted and at least one target failed or was skipped, and `failed` when no target is accepted.
 
+
+## POST /api/internal/outbound/recover-stuck
+
+Request:
+
+```json
+{
+  "limit": 20
+}
+```
+
+Request rules:
+
+- Body must be a JSON object.
+- `limit` is optional and must be an integer between `1` and `50`.
+- Backend recovers stale outbound rows in `message_logs.provider_status in ('queued','sending')`.
+- Recovery is idempotent at the row level: it reuses the existing `message_logs.id` and does not create a new outbound row.
+- Recovery caps retry count and marks exhausted rows `failed`.
+- Reminder-linked exhausted rows finalize the related reminder state.
+
+Success response:
+
+```json
+{
+  "ok": true,
+  "scanned": 2,
+  "recovered": 1,
+  "failed": 1,
+  "remindersRecovered": 1,
+  "queued": [
+    {
+      "messageLogId": "uuid",
+      "channel": "whatsapp",
+      "provider": "meta_whatsapp_cloud_api",
+      "recipientIdentifier": "393331234567",
+      "text": "Messaggio recuperato"
+    }
+  ]
+}
+```
+
+WF-08 validates each returned queued item before forwarding it to WF-03.
 ## POST /api/internal/documents/run
 
 Request:
@@ -245,7 +287,7 @@ Success response:
   "documents": [
     {
       "id": "uuid",
-      "status": "generated",
+      "status": "ready",
       "document_type": "final_summary",
       "work_order_id": "uuid",
       "version": 1,
@@ -296,3 +338,5 @@ Success response:
   "expired": 0
 }
 ```
+
+

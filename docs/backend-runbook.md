@@ -29,7 +29,7 @@ Required runtime env names remain `Criccheto_*`:
 
 Optional dashboard-specific env names:
 
-- `Criccheto_DASHBOARD_API_SECRET` defaults to `Criccheto_INTERNAL_API_SECRET` when unset.
+- `Criccheto_DASHBOARD_API_SECRET` is required for dashboard API and middleware requests; keep it distinct from `Criccheto_INTERNAL_API_SECRET`.
 - `Criccheto_DASHBOARD_WORKSHOP_ID` can pin the dashboard to one workshop. When unset, the first workshop by `created_at` is used.
 
 ## Internal endpoints
@@ -41,6 +41,7 @@ These backend endpoints are mounted by Next.js and require `x-internal-secret`:
 - `POST /api/internal/reminders/run`
 - `POST /api/internal/documents/run`
 - `POST /api/internal/intake/expire-cleanup`
+- `POST /api/internal/outbound/recover-stuck`
 
 ## Dashboard endpoints
 
@@ -80,4 +81,5 @@ $env:Criccheto_BACKEND_BASE_URL="http://localhost:3000"
 node apps/web/scripts/manual-backend-smoke.mjs
 ```
 
-The smoke script uses Telegram-test normalized messages and calls the internal endpoints through `Criccheto_INTERNAL_API_SECRET`.
+The smoke script uses Telegram-test normalized messages, the canonical `Cricchetto_bot` route key, and calls the internal endpoints through `Criccheto_INTERNAL_API_SECRET`.
+

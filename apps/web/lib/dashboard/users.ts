@@ -124,7 +124,7 @@ export async function createWorkshopUser(input: {
       display_name: input.displayName ?? null,
       role: input.role,
     })
-    .select("id,workshop_id,email,display_name,password_hash,role,is_active")
+    .select("id,workshop_id,email,display_name,password_hash,role,is_active,session_version")
     .single();
 
   if (error) {
@@ -140,6 +140,7 @@ export async function createWorkshopUser(input: {
     passwordHash: data.password_hash ?? null,
     role: data.role as "owner" | "staff",
     isActive: data.is_active,
+    sessionVersion: (data as any).session_version ?? 0,
   };
 }
 
@@ -196,3 +197,6 @@ export async function consumePasswordResetToken(rawToken: string): Promise<Works
 
   return findWorkshopUserById(data.user_id);
 }
+
+
+

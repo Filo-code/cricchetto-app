@@ -22,7 +22,9 @@ export const telegramProvider: ProviderAdapter = {
     const text = rawPayload.text ?? message?.text ?? message?.caption ?? "";
     const providerMessageId = rawPayload.provider_message_id ?? (message?.message_id ? String(message.message_id) : undefined);
     const senderIdentifier = rawPayload.sender ?? (message?.chat?.id ? String(message.chat.id) : undefined);
-    const recipientIdentifier = rawPayload.recipient ?? rawPayload.bot_username ?? process.env.Criccheto_TELEGRAM_BOT_IDENTIFIER ?? "Cricchetto_bot";
+    const recipientIdentifier = normalizeTelegramBotIdentifier(
+      rawPayload.recipient ?? rawPayload.bot_username ?? process.env.Criccheto_TELEGRAM_BOT_IDENTIFIER ?? "Cricchetto_bot",
+    );
     const attachments = normalizeTelegramAttachments(message);
 
     if ((!text && attachments.length === 0) || !providerMessageId || !senderIdentifier || !recipientIdentifier) {
@@ -121,4 +123,7 @@ function normalizeTelegramAttachments(message: any): NonNullable<NormalizedInbou
   }
 
   return [];
+}
+function normalizeTelegramBotIdentifier(value: string): string {
+  return value === "Crichetto_bot" ? "Cricchetto_bot" : value;
 }

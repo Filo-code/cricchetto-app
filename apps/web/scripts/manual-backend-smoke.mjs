@@ -2,12 +2,13 @@
 
 const baseUrl = requiredEnv("Criccheto_BACKEND_BASE_URL").replace(/\/$/, "");
 const internalSecret = requiredEnv("Criccheto_INTERNAL_API_SECRET");
-const telegramRecipient = process.env.Criccheto_TELEGRAM_BOT_IDENTIFIER || "Cricchetto_bot";
+const telegramRecipient = normalizeTelegramBotIdentifier(process.env.Criccheto_TELEGRAM_BOT_IDENTIFIER || "Cricchetto_bot");
 const sender = process.env.Criccheto_TEST_TELEGRAM_CHAT_ID || `manual-smoke-${Date.now()}`;
 const realProviderMessageId = process.env.Criccheto_TEST_REAL_PROVIDER_MESSAGE_ID;
 const plate = process.env.Criccheto_TEST_PLATE || randomPlate();
 
 const reminderTypes = [
+  "ready_pickup",
   "ready_not_collected",
   "revision_due_35d",
   "revision_due_30d",
@@ -78,6 +79,9 @@ assert(Array.isArray(reminderResult.queued), "reminder runner must return queued
 
 await inbound(`RITIRATA ${plate}`, "collect");
 
+const recoveryResult = await post("/api/internal/outbound/recover-stuck", { limit: 20 });
+assert(Array.isArray(recoveryResult.queued), "outbound recovery must return queued array");
+
 const cleanupResult = await post("/api/internal/intake/expire-cleanup", {});
 assert(Number.isInteger(cleanupResult.expired), "cleanup must return expired count");
 
@@ -133,4 +137,7 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+function normalizeTelegramBotIdentifier(value) {
+  return value === "Crichetto_bot" ? "Cricchetto_bot" : value;
 }

@@ -53,6 +53,7 @@ n8n must define:
 - `POST /api/internal/reminders/run`
 - `POST /api/internal/documents/run`
 - `POST /api/internal/intake/expire-cleanup`
+- `POST /api/internal/outbound/recover-stuck`
 
 ## Reminder Contract
 
@@ -60,6 +61,7 @@ n8n must define:
 - Each queued item must include `messageLogId`, `channel`, `provider`, `recipientIdentifier`, `text`, and `relatedReminderId`.
 - WF-04 and WF-05 validate queued items before calling WF-03.
 - Reminder-linked outbound results transition reminder status from `sending` to `sent`, `partial`, or `failed`.
+- `/api/internal/outbound/recover-stuck` must be scheduled via WF-08 or equivalent cron so stale `queued`/`sending` outbound rows do not remain stuck permanently.
 - A reminder is returned as queued only when backend created at least one outbound row and successfully claimed the scheduled reminder.
 - Workshops that use mechanic-targeted reminders must configure `workshop_channels.sender_identifier`.
 
@@ -69,6 +71,7 @@ n8n must define:
 - Backend owns claim, deterministic minimal PDF generation, private Supabase Storage upload, and final status updates.
 - `Criccheto_DOCUMENTS_BUCKET` defaults to `documents` when omitted.
 - WF-06 only schedules the backend endpoint.
+- WF-08 only schedules backend outbound recovery and re-dispatch through WF-03.
 
 ## Atomic Intake Requirement
 
@@ -85,3 +88,4 @@ n8n must define:
 - WF-03 dispatch is secret-protected.
 - WF-01 safely ignores provider noise.
 - Internal API contracts are locked in `docs/internal-api-contracts.md` and `apps/web/lib/contracts/internal.ts`.
+

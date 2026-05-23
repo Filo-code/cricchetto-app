@@ -138,3 +138,15 @@ export interface InternalIntakeExpireCleanupResponse {
 }
 
 export type InternalIntakeExpireCleanupRequest = Record<string, never>;
+export interface InternalOutboundRecoverStuckRequest {
+  limit?: number;
+}
+
+export interface InternalOutboundRecoverStuckResponse {
+  ok: true;
+  scanned: number;
+  recovered: number;
+  failed: number;
+  remindersRecovered: number;
+  queued: InternalQueuedOutboundMessage[];
+}

@@ -1,18 +1,19 @@
 {
-  "name": "WF-04 Ready Reminder Scheduler",
+  "name": "WF-08 Outbound Recovery Scheduler",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "hours"
+              "field": "minutes",
+              "minutesInterval": 10
             }
           ]
         }
       },
-      "id": "5add10eb-8184-4bd4-8902-e953619154fd",
-      "name": "Hourly Schedule",
+      "id": "0e20f571-4df0-4f1f-8c69-b87bcf2ff6eb",
+      "name": "10 Minute Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
       "position": [
@@ -23,7 +24,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/reminders/run",
+        "url": "={{$env.Criccheto_BACKEND_BASE_URL}}/api/internal/outbound/recover-stuck",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -35,11 +36,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ limit: 20, reminderTypes: ['ready_pickup', 'ready_not_collected'] }) }}",
+        "jsonBody": "={{ JSON.stringify({ limit: 20 }) }}",
         "options": {}
       },
-      "id": "a4f3ac5d-d9ec-47cf-9626-449f6bbc6231",
-      "name": "Queue Due Ready Reminders",
+      "id": "2f3d6e56-194e-4bd1-9721-43176525d908",
+      "name": "Recover Stuck Outbound",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
@@ -49,10 +50,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend reminders/run response must include queued array');\nconsole.log('[WF-04] ready reminder batch', { scanned: $json.scanned ?? '?', queued: queued.length, skipped: $json.skipped ?? '?', failed: $json.failed ?? '?' });\nif ($json.failed > 0) console.warn('[WF-04] some reminders failed to queue', { failed: $json.failed });\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text', 'relatedReminderId']) {\n    if (!item[field]) throw new Error(`Queued reminder message missing ${field}`);\n  }\n  return { json: item };\n});"
+        "jsCode": "const queued = $json.queued || [];\nif (!Array.isArray(queued)) throw new Error('Backend outbound/recover-stuck response must include queued array');\nconsole.log('[WF-08] outbound recovery batch', { scanned: $json.scanned ?? '?', recovered: queued.length, failed: $json.failed ?? '?', remindersRecovered: $json.remindersRecovered ?? '?' });\nreturn queued.map((item) => {\n  for (const field of ['messageLogId', 'channel', 'provider', 'recipientIdentifier', 'text']) {\n    if (!item[field]) throw new Error(`Recovered outbound message missing ${field}`);\n  }\n  return { json: item };\n});"
       },
-      "id": "6d296d2a-02a7-48f2-9a79-a09274bbc206",
-      "name": "Extract Queued Messages",
+      "id": "b81c1d14-8566-44b0-b197-c7bc6a4b0e43",
+      "name": "Extract Recovered Messages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -75,11 +76,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  messageLogId: String($json.messageLogId),\n  channel: $json.channel,\n  provider: $json.provider,\n  senderIdentifier: $json.senderIdentifier ? String($json.senderIdentifier) : undefined,\n  recipientIdentifier: String($json.recipientIdentifier),\n  text: String($json.text || ''),\n  relatedReminderId: String($json.relatedReminderId)\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  messageLogId: String($json.messageLogId),\n  channel: $json.channel,\n  provider: $json.provider,\n  senderIdentifier: $json.senderIdentifier ? String($json.senderIdentifier) : undefined,\n  recipientIdentifier: String($json.recipientIdentifier),\n  text: String($json.text || ''),\n  relatedWorkOrderId: $json.relatedWorkOrderId,\n  relatedReminderId: $json.relatedReminderId,\n  relatedDocumentId: $json.relatedDocumentId\n}) }}",
         "options": {}
       },
-      "id": "0350fe72-2b0e-45d0-b282-be089111a256",
-      "name": "Dispatch Outbound",
+      "id": "c163539c-00eb-4b8c-8a28-7d9f8f095e68",
+      "name": "Dispatch Recovered Outbound",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
@@ -90,33 +91,33 @@
   ],
   "pinData": {},
   "connections": {
-    "Hourly Schedule": {
+    "10 Minute Schedule": {
       "main": [
         [
           {
-            "node": "Queue Due Ready Reminders",
+            "node": "Recover Stuck Outbound",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Queue Due Ready Reminders": {
+    "Recover Stuck Outbound": {
       "main": [
         [
           {
-            "node": "Extract Queued Messages",
+            "node": "Extract Recovered Messages",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract Queued Messages": {
+    "Extract Recovered Messages": {
       "main": [
         [
           {
-            "node": "Dispatch Outbound",
+            "node": "Dispatch Recovered Outbound",
             "type": "main",
             "index": 0
           }
@@ -129,11 +130,10 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "6addd572-a3b8-40a2-96b3-747efa8c1922",
+  "versionId": "8c5b9351-2d74-4b98-90ab-2bff7cb8eaf3",
   "meta": {
     "instanceId": "df5384e6f2347cd6ede64b56224851f2aa5ed4e48945650250d840858c4282a4"
   },
-  "id": "hQGo1CswC3ANZSjg",
+  "id": "m9jkQ8yV4hnhgM2g",
   "tags": []
 }
-

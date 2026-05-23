@@ -54,10 +54,11 @@ All committed workflow JSON exports are stored inactive (`active: false`) and mu
 - `WF-01_Inbound_Channel_Entry.json`: production-useful ingress for Meta WhatsApp Cloud API and Telegram Bot API. WhatsApp status callbacks and Telegram `callback_query` updates are acknowledged as ignored; text, image/document media, and audio are normalized and sent to backend.
 - `WF-02_Command_Router.json`: deprecated; command routing is backend-owned.
 - `WF-03_Outbound_Message_Dispatch.json`: production-useful outbound dispatch for Meta WhatsApp Cloud API and Telegram Bot API.
-- `WF-04_Ready_Reminder_Scheduler.json`: production-useful scheduler that asks backend for due ready reminders and dispatches queued jobs.
+- `WF-04_Ready_Reminder_Scheduler.json`: production-useful scheduler that asks backend for due `ready_pickup` and `ready_not_collected` reminders and dispatches queued jobs.
 - `WF-05_Revision_Reminder_Scheduler.json`: production-useful scheduler that asks backend for due revision reminders and dispatches queued jobs.
 - `WF-06_Document_Worker.json`: scheduler that calls the backend document worker. Backend owns claim, deterministic minimal PDF generation, private Supabase Storage upload, and final status updates.
 - `WF-07_Intake_Expiry_Cleanup.json`: production-useful cleanup scheduler.
+- `WF-08_Outbound_Recovery_Scheduler.json`: production-useful recovery scheduler that requeues stale outbound dispatches and finalizes stale reminder state.
 
 ## Backend Endpoints Used
 
@@ -66,6 +67,7 @@ All committed workflow JSON exports are stored inactive (`active: false`) and mu
 - `POST /api/internal/reminders/run`
 - `POST /api/internal/documents/run`
 - `POST /api/internal/intake/expire-cleanup`
+- `POST /api/internal/outbound/recover-stuck`
 
 ## Channel Identity Semantics
 
@@ -107,7 +109,7 @@ Request:
 ```json
 {
   "limit": 20,
-  "reminderTypes": ["ready_not_collected"]
+  "reminderTypes": ["ready_pickup", "ready_not_collected"]
 }
 ```
 
@@ -131,11 +133,13 @@ Response:
 
 Each queued item is passed to WF-03 with `x-dispatch-secret`.
 
+WF-08 calls `POST /api/internal/outbound/recover-stuck` with `x-internal-secret`, receives stale outbound rows already re-queued by backend, and forwards them to WF-03.
+
 Current runtime note: `recipient_policy = both` can return two queued outbound jobs for the same `relatedReminderId`. WF-04 and WF-05 dispatch every queued item returned by backend.
 
 ## Document Worker Contract
 
-WF-06 calls `POST /api/internal/documents/run` with `x-internal-secret` and body `{"limit":10}`. Backend claims pending rows, generates deterministic minimal PDFs, uploads them to private Supabase Storage, and updates document rows to `generated` or `failed`. n8n only schedules the worker.
+WF-06 calls `POST /api/internal/documents/run` with `x-internal-secret` and body `{"limit":10}`. Backend claims pending rows, generates deterministic minimal PDFs, uploads them to private Supabase Storage, and updates document rows to `ready` or `failed`. n8n only schedules the worker.
 
 Response:
 
@@ -148,7 +152,7 @@ Response:
   "documents": [
     {
       "id": "uuid",
-      "status": "generated",
+      "status": "ready",
       "document_type": "final_summary",
       "work_order_id": "uuid",
       "version": 1,
@@ -159,3 +163,4 @@ Response:
   ]
 }
 ```
+
