@@ -9,7 +9,7 @@ export async function requirePlatformOwnerSession(): Promise<DashboardSessionPay
   const session = await requireDashboardSession();
 
   if (getPlatformOwnerEmails().size === 0) {
-    console.warn("[platform-auth] Criccheto_PLATFORM_OWNER_EMAILS not set, admin access blocked");
+    console.warn("[platform-auth] Cricchetto_PLATFORM_OWNER_EMAILS not set, admin access blocked");
     redirect("/dashboard");
   }
 

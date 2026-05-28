@@ -2,7 +2,7 @@ import { PDFDocument } from "pdf-lib";
 import { supabaseServer } from "../supabase-server";
 import type { DocumentType } from "../types";
 
-const TEMPLATES_BUCKET = process.env.Criccheto_DOCUMENT_TEMPLATES_BUCKET || "document-templates";
+const TEMPLATES_BUCKET = process.env.Cricchetto_DOCUMENT_TEMPLATES_BUCKET || "document-templates";
 
 export interface WorkshopProfile {
   name: string;

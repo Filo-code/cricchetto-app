@@ -7,9 +7,9 @@ import type { NextRequest } from "next/server";
 // routes use separate auth mechanisms and are intentionally excluded here.
 
 export function middleware(request: NextRequest): NextResponse {
-  const expected = process.env.Criccheto_DASHBOARD_API_SECRET;
+  const expected = process.env.Cricchetto_DASHBOARD_API_SECRET;
   if (!expected) {
-    console.error("[middleware] Criccheto_DASHBOARD_API_SECRET not configured");
+    console.error("[middleware] Cricchetto_DASHBOARD_API_SECRET not configured");
     return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
   }
 

@@ -5,7 +5,7 @@ export function requireInternalRequest(request: Request): void {
   const expected = process.env.Cricchetto_INTERNAL_API_SECRET;
 
   if (!expected) {
-    throw new AppError("Criccheto_INTERNAL_API_SECRET is required", { statusCode: 500, parseStatus: "error" });
+    throw new AppError("Cricchetto_INTERNAL_API_SECRET is required", { statusCode: 500, parseStatus: "error" });
   }
 
   const actual = request.headers.get("x-internal-secret");

@@ -48,7 +48,7 @@ export async function createWorkshopAction(
     const raw = err instanceof Error ? err.message : "";
     const safe = /email già registrata|già registrata/i.test(raw)
       ? "Email già registrata. Usa un indirizzo diverso."
-      : raw.startsWith("Impossibile") || raw.startsWith("Criccheto_BACKEND_BASE_URL")
+      : raw.startsWith("Impossibile") || raw.startsWith("Cricchetto_BACKEND_BASE_URL")
         ? raw
         : "Errore durante la creazione. Verifica i dati e riprova.";
     return { ok: false, message: safe, stamp: Date.now() };
@@ -152,9 +152,9 @@ export async function generateUserResetLinkAction(
   const userId = text(formData, "userId");
   if (!userId) return { ok: false, message: "ID utente mancante.", stamp: Date.now() };
 
-  const rawBaseUrl = process.env.Criccheto_BACKEND_BASE_URL ?? "";
+  const rawBaseUrl = process.env.Cricchetto_BACKEND_BASE_URL ?? "";
   if (!rawBaseUrl && process.env.NODE_ENV === "production") {
-    return { ok: false, message: "Criccheto_BACKEND_BASE_URL è richiesto in produzione.", stamp: Date.now() };
+    return { ok: false, message: "Cricchetto_BACKEND_BASE_URL è richiesto in produzione.", stamp: Date.now() };
   }
 
   try {
@@ -254,7 +254,7 @@ export async function resetDemoWorkshopAction(
   if (!platformWorkshopId) {
     return {
       ok: false,
-      message: "Criccheto_PLATFORM_WORKSHOP_ID non configurato. Reset non disponibile.",
+      message: "Cricchetto_PLATFORM_WORKSHOP_ID non configurato. Reset non disponibile.",
       stamp: Date.now(),
     };
   }
@@ -310,7 +310,7 @@ export async function populateDemoWorkshopAction(
   if (!platformWorkshopId) {
     return {
       ok: false,
-      message: "Criccheto_PLATFORM_WORKSHOP_ID non configurato. Azione non disponibile.",
+      message: "Cricchetto_PLATFORM_WORKSHOP_ID non configurato. Azione non disponibile.",
       stamp: Date.now(),
     };
   }

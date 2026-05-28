@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { supabaseServer } from "../supabase-server";
 
-const TEMPLATES_BUCKET = process.env.Criccheto_DOCUMENT_TEMPLATES_BUCKET || "document-templates";
+const TEMPLATES_BUCKET = process.env.Cricchetto_DOCUMENT_TEMPLATES_BUCKET || "document-templates";
 const MAX_TEMPLATE_BYTES = 5 * 1024 * 1024;
 const VALID_DOCUMENT_TYPES = new Set(["intake_acceptance", "estimate", "final_summary"]);
 

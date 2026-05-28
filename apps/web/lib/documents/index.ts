@@ -4,8 +4,8 @@ import { supabaseServer } from "../supabase-server";
 import type { CommandExecutionResult, DocumentType } from "../types";
 import { renderDocumentFromTemplate, readWorkshopProfileForDocument } from "./template-renderer";
 
-const DOCUMENT_OUTBOUND_URL_TTL_SECONDS = Number(process.env.Criccheto_DOCUMENT_OUTBOUND_URL_TTL ?? "86400");
-const DOCUMENT_GENERATION_STALE_MINUTES = Number(process.env.Criccheto_DOCUMENT_GENERATION_STALE_MINUTES ?? "15");
+const DOCUMENT_OUTBOUND_URL_TTL_SECONDS = Number(process.env.Cricchetto_DOCUMENT_OUTBOUND_URL_TTL ?? "86400");
+const DOCUMENT_GENERATION_STALE_MINUTES = Number(process.env.Cricchetto_DOCUMENT_GENERATION_STALE_MINUTES ?? "15");
 const ACTIVE_DOCUMENT_STATUSES = ["pending", "generating"] as const;
 const READY_DOCUMENT_STATUSES = new Set(["ready", "generated"]);
 
@@ -359,7 +359,7 @@ async function generateAndStoreDocument(document: any): Promise<ProcessedDocumen
       ? await readWorkOrderNotes(document.workshop_id, document.work_order_id)
       : [];
     const filename = `${document.document_type}_v${document.version}_${workOrder.public_code}.pdf`;
-    const storageBucket = process.env.Criccheto_DOCUMENTS_BUCKET || "documents";
+    const storageBucket = process.env.Cricchetto_DOCUMENTS_BUCKET || "documents";
     const storagePath = `${document.workshop_id}/${document.work_order_id}/${filename}`;
 
     let pdf: Buffer;

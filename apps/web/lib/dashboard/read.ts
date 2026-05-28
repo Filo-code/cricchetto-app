@@ -267,7 +267,7 @@ export interface WorkshopFullSettings {
 
 export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
   const session = await peekDashboardSession();
-  const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
+  const configuredWorkshopId = process.env.Cricchetto_DASHBOARD_WORKSHOP_ID ?? process.env.Cricchetto_WORKSHOP_ID;
   const workshopId = session?.workshopId ?? configuredWorkshopId;
 
   if (!workshopId) {
@@ -337,7 +337,7 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
   }
 
   const { Buffer } = await import("node:buffer");
-  const BUCKET = process.env.Criccheto_BRANDING_BUCKET || "workshop-branding";
+  const BUCKET = process.env.Cricchetto_BRANDING_BUCKET || "workshop-branding";
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const storagePath = `${workshopId}/logo/logo-${Date.now()}.${ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -363,7 +363,7 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
 export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null; status: string }> {
   // Resolve workshopId: session > env-var. No first-by-date fallback in production.
   const session = await peekDashboardSession();
-  const configuredWorkshopId = process.env.Criccheto_DASHBOARD_WORKSHOP_ID ?? process.env.Criccheto_WORKSHOP_ID;
+  const configuredWorkshopId = process.env.Cricchetto_DASHBOARD_WORKSHOP_ID ?? process.env.Cricchetto_WORKSHOP_ID;
   const workshopId = session?.workshopId ?? configuredWorkshopId;
 
   if (!workshopId) {

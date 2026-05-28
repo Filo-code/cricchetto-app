@@ -135,7 +135,7 @@ async function getRequestBaseUrl(): Promise<DashboardBaseUrlResolution> {
     };
   }
 
-  const configured = process.env.Criccheto_BACKEND_BASE_URL?.replace(/\/$/, "");
+  const configured = process.env.Cricchetto_BACKEND_BASE_URL?.replace(/\/$/, "");
   if (configured) {
     return {
       baseUrl: configured,

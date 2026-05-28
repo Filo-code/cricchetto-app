@@ -1,7 +1,7 @@
 import { LoginForm, WhatsAppSupportButton } from "./login-form";
 
 export default function LoginPage() {
-  const supportNumber = process.env.Criccheto_SUPPORT_WHATSAPP_NUMBER ?? null;
+  const supportNumber = process.env.Cricchetto_SUPPORT_WHATSAPP_NUMBER ?? null;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
@@ -32,7 +32,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <LoginForm showForgotPassword={!!(process.env.Criccheto_SMTP_HOST && process.env.Criccheto_SMTP_USER && process.env.Criccheto_SMTP_PASS)} />
+          <LoginForm showForgotPassword={!!(process.env.Cricchetto_SMTP_HOST && process.env.Cricchetto_SMTP_USER && process.env.Cricchetto_SMTP_PASS)} />
         </div>
 
         {supportNumber ? (

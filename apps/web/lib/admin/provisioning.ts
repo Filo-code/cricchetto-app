@@ -55,9 +55,9 @@ export async function provisionWorkshop(input: {
     // 5. Generate invite token (raw token returned to caller, sha256 hash stored in DB)
     const { token, expiresAt } = await generatePasswordResetToken(user.id);
 
-    const rawBaseUrl = process.env.Criccheto_BACKEND_BASE_URL ?? "";
+    const rawBaseUrl = process.env.Cricchetto_BACKEND_BASE_URL ?? "";
     if (!rawBaseUrl && process.env.NODE_ENV === "production") {
-      throw new Error("Criccheto_BACKEND_BASE_URL è richiesto in produzione per generare i link di invito.");
+      throw new Error("Cricchetto_BACKEND_BASE_URL è richiesto in produzione per generare i link di invito.");
     }
     const baseUrl = rawBaseUrl.replace(/\/$/, "");
     const inviteLink = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;

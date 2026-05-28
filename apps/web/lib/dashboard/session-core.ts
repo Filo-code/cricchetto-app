@@ -56,15 +56,15 @@ export async function peekDashboardSession(): Promise<DashboardSessionPayload | 
 }
 
 function hmac(value: string): string {
-  const secret = process.env.Criccheto_DASHBOARD_SESSION_SECRET;
+  const secret = process.env.Cricchetto_DASHBOARD_SESSION_SECRET;
   if (!secret) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("Criccheto_DASHBOARD_SESSION_SECRET is required in production");
+      throw new Error("Cricchetto_DASHBOARD_SESSION_SECRET is required in production");
     }
     // Dev-only fallback — not allowed in production
-    const devFallback = process.env.Criccheto_DASHBOARD_API_SECRET ?? process.env.Criccheto_INTERNAL_API_SECRET;
+    const devFallback = process.env.Cricchetto_DASHBOARD_API_SECRET ?? process.env.Cricchetto_INTERNAL_API_SECRET;
     if (!devFallback) {
-      throw new Error("Criccheto_DASHBOARD_SESSION_SECRET (or dev fallback Criccheto_INTERNAL_API_SECRET) is required");
+      throw new Error("Cricchetto_DASHBOARD_SESSION_SECRET (or dev fallback Cricchetto_INTERNAL_API_SECRET) is required");
     }
     return createHmac("sha256", devFallback).update(value).digest("base64url");
   }

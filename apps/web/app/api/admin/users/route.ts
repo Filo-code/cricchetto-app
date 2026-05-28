@@ -27,9 +27,9 @@ export async function POST(request: Request): Promise<Response> {
     const user = await createWorkshopUser({ workshopId: workshop.id, email, displayName: displayName ?? undefined, role });
     const { token, expiresAt } = await generatePasswordResetToken(user.id);
 
-    const rawBaseUrl = process.env.Criccheto_BACKEND_BASE_URL ?? "";
+    const rawBaseUrl = process.env.Cricchetto_BACKEND_BASE_URL ?? "";
     if (!rawBaseUrl && process.env.NODE_ENV === "production") {
-      return Response.json({ ok: false, error: "Criccheto_BACKEND_BASE_URL è richiesto in produzione." }, { status: 500 });
+      return Response.json({ ok: false, error: "Cricchetto_BACKEND_BASE_URL è richiesto in produzione." }, { status: 500 });
     }
     const baseUrl = rawBaseUrl.replace(/\/$/, "");
     const setupUrl = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;

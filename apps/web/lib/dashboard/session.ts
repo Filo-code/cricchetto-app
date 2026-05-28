@@ -79,24 +79,23 @@ export async function authenticateDashboardUser(input: { email: string; password
 
   // 2. Env-var fallback (legacy single-user mode)
   if (!payload) {
-    const expectedUsername = process.env.Criccheto_DASHBOARD_USERNAME;
-    const expectedPassword = process.env.Criccheto_DASHBOARD_PASSWORD;
-    if (
-      expectedUsername
-      && expectedPassword
-      && timingSafeEqualString(input.email.trim(), expectedUsername)
-      && timingSafeEqualString(input.password, expectedPassword)
-    ) {
-      // No session yet — readDashboardWorkshop falls back to env-var or first workshop
-      const workshop = await readDashboardWorkshop();
-      payload = {
-        sub: "env",
-        email: expectedUsername,
-        role: "owner",
-        workshopId: workshop.id,
-        expiresAt: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
-        sessionVersion: 0,
-      };
+    const expectedUsername = process.env.Cricchetto_DASHBOARD_USERNAME;
+    const expectedPassword = process.env.Cricchetto_DASHBOARD_PASSWORD;
+    if (expectedUsername && expectedPassword) {
+      const usernameMatch = timingSafeEqualString(input.email.trim(), expectedUsername);
+      const passwordMatch = timingSafeEqualString(input.password, expectedPassword);
+      if (usernameMatch && passwordMatch) {
+        // No session yet — readDashboardWorkshop falls back to env-var or first workshop
+        const workshop = await readDashboardWorkshop();
+        payload = {
+          sub: "env",
+          email: expectedUsername,
+          role: "owner",
+          workshopId: workshop.id,
+          expiresAt: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+          sessionVersion: 0,
+        };
+      }
     }
   }
 

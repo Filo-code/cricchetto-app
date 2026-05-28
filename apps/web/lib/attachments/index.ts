@@ -5,7 +5,7 @@ import { AppError } from "../errors";
 import { supabaseServer } from "../supabase-server";
 import type { AttachmentType, NormalizedInboundAttachment, NormalizedInboundMessage } from "../types";
 
-const ATTACHMENTS_BUCKET = process.env.Criccheto_ATTACHMENTS_BUCKET || "attachments";
+const ATTACHMENTS_BUCKET = process.env.Cricchetto_ATTACHMENTS_BUCKET || "attachments";
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 type AttachmentActorType = "mechanic" | "dashboard_user" | "system";
@@ -309,9 +309,9 @@ async function downloadTelegramAttachment(
   inbound: NormalizedInboundMessage,
   attachment: NormalizedInboundAttachment,
 ): Promise<ResolvedAttachmentFile> {
-  const token = process.env.Criccheto_TELEGRAM_BOT_TOKEN;
+  const token = process.env.Cricchetto_TELEGRAM_BOT_TOKEN;
   if (!token) {
-    throw new AppError("Criccheto_TELEGRAM_BOT_TOKEN is required for Telegram attachments", {
+    throw new AppError("Cricchetto_TELEGRAM_BOT_TOKEN is required for Telegram attachments", {
       statusCode: 500,
       parseStatus: "error",
       publicMessage: "Allegato Telegram non disponibile.\nRiprova tra poco.",
@@ -369,10 +369,10 @@ async function downloadWhatsAppAttachment(
   _inbound: NormalizedInboundMessage,
   attachment: NormalizedInboundAttachment,
 ): Promise<ResolvedAttachmentFile> {
-  const accessToken = process.env.Criccheto_WHATSAPP_ACCESS_TOKEN;
-  const baseUrl = (process.env.Criccheto_WHATSAPP_GRAPH_API_BASE_URL || "https://graph.facebook.com/v20.0").replace(/\/$/, "");
+  const accessToken = process.env.Cricchetto_WHATSAPP_ACCESS_TOKEN;
+  const baseUrl = (process.env.Cricchetto_WHATSAPP_GRAPH_API_BASE_URL || "https://graph.facebook.com/v20.0").replace(/\/$/, "");
   if (!accessToken) {
-    throw new AppError("Criccheto_WHATSAPP_ACCESS_TOKEN is required for WhatsApp attachments", {
+    throw new AppError("Cricchetto_WHATSAPP_ACCESS_TOKEN is required for WhatsApp attachments", {
       statusCode: 500,
       parseStatus: "error",
       publicMessage: "Allegato WhatsApp non disponibile.\nRiprova tra poco.",

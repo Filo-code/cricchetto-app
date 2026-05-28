@@ -6,10 +6,10 @@ import type { ProviderAdapter } from "./types";
 export const telegramProvider: ProviderAdapter = {
   channel: "telegram_test",
   async verifyInboundSignature(request: Request, _rawBody: string): Promise<void> {
-    const expected = process.env.Criccheto_TELEGRAM_WEBHOOK_SECRET;
+    const expected = process.env.Cricchetto_TELEGRAM_WEBHOOK_SECRET;
     if (!expected) {
       if (process.env.NODE_ENV === "production") {
-        throw new AppError("Criccheto_TELEGRAM_WEBHOOK_SECRET is required", { statusCode: 500, parseStatus: "error" });
+        throw new AppError("Cricchetto_TELEGRAM_WEBHOOK_SECRET is required", { statusCode: 500, parseStatus: "error" });
       }
       return;
     }
@@ -23,7 +23,7 @@ export const telegramProvider: ProviderAdapter = {
     const providerMessageId = rawPayload.provider_message_id ?? (message?.message_id ? String(message.message_id) : undefined);
     const senderIdentifier = rawPayload.sender ?? (message?.chat?.id ? String(message.chat.id) : undefined);
     const recipientIdentifier = normalizeTelegramBotIdentifier(
-      rawPayload.recipient ?? rawPayload.bot_username ?? process.env.Criccheto_TELEGRAM_BOT_IDENTIFIER ?? "Cricchetto_bot",
+      rawPayload.recipient ?? rawPayload.bot_username ?? process.env.Cricchetto_TELEGRAM_BOT_IDENTIFIER ?? "Cricchetto_bot",
     );
     const attachments = normalizeTelegramAttachments(message);
 

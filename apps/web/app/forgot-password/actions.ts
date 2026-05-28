@@ -27,7 +27,7 @@ export async function forgotPasswordAction(
     if (user && user.isActive) {
       const { token, expiresAt } = await generatePasswordResetToken(user.id);
 
-      const baseUrl = process.env.Criccheto_BACKEND_BASE_URL ?? "";
+      const baseUrl = process.env.Cricchetto_BACKEND_BASE_URL ?? "";
       const resetLink = `${baseUrl}/set-password?token=${token}`;
 
       if (process.env.NODE_ENV !== "production") {
@@ -36,7 +36,7 @@ export async function forgotPasswordAction(
       }
 
       // P1 MISSING: Email delivery requires SMTP configuration.
-      // Add Criccheto_SMTP_HOST / SMTP_USER / SMTP_PASS / MAIL_FROM to .env
+      // Add Cricchetto_SMTP_HOST / SMTP_USER / SMTP_PASS / MAIL_FROM to .env
       // and integrate a mail library (e.g. nodemailer) to send the reset link.
       // Until then, the token is only logged to the server console in development.
       console.warn("[forgot-password] email_delivery_not_configured — reset link not sent to user");

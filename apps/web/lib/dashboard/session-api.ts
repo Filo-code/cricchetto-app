@@ -38,9 +38,9 @@ export async function verifyDashboardSessionForApi(): Promise<DashboardSessionPa
 }
 
 function hmac(value: string): string {
-  const secret = process.env.Criccheto_DASHBOARD_SESSION_SECRET
-    ?? process.env.Criccheto_DASHBOARD_API_SECRET
-    ?? process.env.Criccheto_INTERNAL_API_SECRET;
+  const secret = process.env.Cricchetto_DASHBOARD_SESSION_SECRET
+    ?? process.env.Cricchetto_DASHBOARD_API_SECRET
+    ?? process.env.Cricchetto_INTERNAL_API_SECRET;
   if (!secret) throw new Error("Session secret not configured");
   return createHmac("sha256", secret).update(value).digest("base64url");
 }

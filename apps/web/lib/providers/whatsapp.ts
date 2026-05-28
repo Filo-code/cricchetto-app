@@ -6,9 +6,9 @@ import type { ProviderAdapter } from "./types";
 export const whatsappProvider: ProviderAdapter = {
   channel: "whatsapp",
   async verifyInboundSignature(request: Request, rawBody: string): Promise<void> {
-    const appSecret = process.env.Criccheto_WHATSAPP_APP_SECRET;
+    const appSecret = process.env.Cricchetto_WHATSAPP_APP_SECRET;
     if (!appSecret) {
-      throw new AppError("Criccheto_WHATSAPP_APP_SECRET is required", { statusCode: 500, parseStatus: "error" });
+      throw new AppError("Cricchetto_WHATSAPP_APP_SECRET is required", { statusCode: 500, parseStatus: "error" });
     }
 
     verifyMetaSha256Signature({
@@ -35,7 +35,7 @@ export const whatsappProvider: ProviderAdapter = {
       rawPayload.to ??
       rawPayload.To ??
       value?.metadata?.phone_number_id ??
-      process.env.Criccheto_WHATSAPP_PHONE_NUMBER_ID;
+      process.env.Cricchetto_WHATSAPP_PHONE_NUMBER_ID;
     const provider = rawPayload.provider ?? "meta_whatsapp_cloud_api";
     const attachments = normalizeWhatsAppAttachments(metaMessage);
 
