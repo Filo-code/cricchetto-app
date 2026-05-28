@@ -54,6 +54,7 @@ n8n/.env
 
 # Project specific
 carousel_cricchetto_screenshots/
+cricchetto-app/
 
 # Git worktrees
 .worktrees/
