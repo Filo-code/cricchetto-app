@@ -17,11 +17,17 @@ export function timingSafeEqualString(actual: string | null | undefined, expecte
 
   const actualBuffer = Buffer.from(actual, "utf8");
   const expectedBuffer = Buffer.from(expected, "utf8");
-  if (actualBuffer.length !== expectedBuffer.length) {
-    return false;
+
+  let result = actualBuffer.length === expectedBuffer.length;
+  if (result) {
+    try {
+      result = timingSafeEqual(actualBuffer, expectedBuffer);
+    } catch {
+      result = false;
+    }
   }
 
-  return timingSafeEqual(actualBuffer, expectedBuffer);
+  return result;
 }
 
 export function verifyMetaSha256Signature(input: {

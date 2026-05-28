@@ -14,13 +14,16 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const workshop = await readDashboardWorkshop();
-    const kilometers = typeof body.kilometers === "number" ? body.kilometers : Number(body.kilometers);
+    const kilometersRaw = typeof body.kilometers === "number" ? body.kilometers : Number(body.kilometers);
+    if (!Number.isFinite(kilometersRaw)) {
+      throw new AppError("Invalid kilometers value", { statusCode: 400, parseStatus: "validation_failed", publicMessage: "Chilometri non validi." });
+    }
     const data = await createDashboardWorkOrder({
       workshopId: workshop.id,
       plate: body.plate,
       vehicleModel: body.vehicleModel,
       reportedIssue: body.reportedIssue,
-      kilometers,
+      kilometers: kilometersRaw,
       customerFirstName: body.customerFirstName,
       customerLastName: body.customerLastName,
       customerPhone: body.customerPhone,
