@@ -176,6 +176,7 @@ export interface WorkshopRoute {
   provider: string;
   recipientIdentifier: string;
   senderIdentifier?: string;
+  providerConfig: Record<string, unknown>;
 }
 
 export interface InboundProcessingResult {

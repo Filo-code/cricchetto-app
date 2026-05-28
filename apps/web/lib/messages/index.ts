@@ -427,7 +427,7 @@ async function processCustomerInbound(
 async function resolveWorkshopRoute(inbound: NormalizedInboundMessage): Promise<WorkshopRoute> {
   const { data, error } = await supabaseServer
     .from("workshop_channels")
-    .select("workshop_id,channel,provider,recipient_identifier,sender_identifier")
+    .select("workshop_id,channel,provider,recipient_identifier,sender_identifier,provider_config")
     .eq("channel", inbound.channel)
     .eq("provider", inbound.provider)
     .eq("recipient_identifier", inbound.recipientIdentifier)
@@ -461,6 +461,7 @@ async function resolveWorkshopRoute(inbound: NormalizedInboundMessage): Promise<
     provider: data.provider,
     recipientIdentifier: data.recipient_identifier,
     senderIdentifier: data.sender_identifier ?? undefined,
+    providerConfig: (data.provider_config as Record<string, unknown>) ?? {},
   };
 }
 

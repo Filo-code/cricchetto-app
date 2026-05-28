@@ -5,8 +5,10 @@ import type { ProviderAdapter } from "./types";
 
 export const whatsappProvider: ProviderAdapter = {
   channel: "whatsapp",
-  async verifyInboundSignature(request: Request, rawBody: string): Promise<void> {
-    const appSecret = process.env.Cricchetto_WHATSAPP_APP_SECRET;
+  async verifyInboundSignature(request: Request, rawBody: string, providerConfig?: Record<string, unknown>): Promise<void> {
+    const appSecret =
+      (typeof providerConfig?.app_secret === "string" ? providerConfig.app_secret : undefined)
+      ?? process.env.Cricchetto_WHATSAPP_APP_SECRET;
     if (!appSecret) {
       throw new AppError("Cricchetto_WHATSAPP_APP_SECRET is required", { statusCode: 500, parseStatus: "error" });
     }
@@ -17,7 +19,7 @@ export const whatsappProvider: ProviderAdapter = {
       appSecret,
     });
   },
-  normalizeInboundPayload(rawPayload: any): NormalizedInboundMessage {
+  normalizeInboundPayload(rawPayload: any, providerConfig?: Record<string, unknown>): NormalizedInboundMessage {
     const value = rawPayload.entry?.[0]?.changes?.[0]?.value;
     const metaMessage = value?.messages?.[0];
     const text =
@@ -35,6 +37,7 @@ export const whatsappProvider: ProviderAdapter = {
       rawPayload.to ??
       rawPayload.To ??
       value?.metadata?.phone_number_id ??
+      (typeof providerConfig?.phone_number_id === "string" ? providerConfig.phone_number_id : undefined) ??
       process.env.Cricchetto_WHATSAPP_PHONE_NUMBER_ID;
     const provider = rawPayload.provider ?? "meta_whatsapp_cloud_api";
     const attachments = normalizeWhatsAppAttachments(metaMessage);
