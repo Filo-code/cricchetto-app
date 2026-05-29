@@ -5,6 +5,8 @@ import { WorkshopListTable } from "../../../components/dashboard/workshop-list-t
 import { listWorkshopsForAdmin } from "../../../lib/admin/workshops";
 import { requirePlatformOwnerSession } from "../../../lib/admin/platform-auth";
 import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
+import { listPlatformAuditEvents, type PlatformAuditEvent } from "../../../lib/admin/platform-audit";
+import { PlatformAuditLog } from "../../../components/dashboard/platform-audit-log";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,14 @@ export default async function AdminWorkshopsPage() {
   } catch {
     // Non-fatal: list renders empty with an error note
   }
+
+  let auditEvents: PlatformAuditEvent[] = [];
+  try {
+    auditEvents = await listPlatformAuditEvents(25);
+  } catch {
+    // Non-fatal (e.g. table not migrated yet): section renders empty
+  }
+  const workshopNameById = new Map(workshops.map((w) => [w.id, w.name]));
 
   return (
     <DashboardShell>
@@ -40,6 +50,13 @@ export default async function AdminWorkshopsPage() {
             Officine registrate ({workshops.length})
           </h2>
           <WorkshopListTable workshops={workshops} platformWorkshopId={platformWorkshopId} />
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-[11px] font-mono uppercase tracking-[0.15em] text-zinc-500">
+            Registro azioni admin
+          </h2>
+          <PlatformAuditLog events={auditEvents} workshopNameById={workshopNameById} />
         </section>
       </div>
     </DashboardShell>

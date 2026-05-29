@@ -349,6 +349,8 @@ export function WorkshopListTable({
   platformWorkshopId?: string | null;
 }) {
   const [editingWorkshopId, setEditingWorkshopId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "closed">("all");
 
   if (workshops.length === 0) {
     return (
@@ -356,9 +358,57 @@ export function WorkshopListTable({
     );
   }
 
+  const query = search.trim().toLowerCase();
+  const filtered = workshops.filter((w) => {
+    if (statusFilter !== "all" && w.status !== statusFilter) return false;
+    if (!query) return true;
+    const haystack = [w.name, w.displayName, w.city, ...w.users.map((u) => u.email)]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+
+  const FILTERS: { key: typeof statusFilter; label: string }[] = [
+    { key: "all", label: "Tutte" },
+    { key: "active", label: "Attive" },
+    { key: "suspended", label: "Sospese" },
+    { key: "closed", label: "Chiuse" },
+  ];
+
   return (
     <div className="space-y-4">
-      {workshops.map((workshop) => {
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cerca per nome, città o email…"
+          className={`${inputClass} flex-1 min-w-[200px]`}
+        />
+        <div className="flex gap-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setStatusFilter(f.key)}
+              className={`rounded-lg px-2.5 py-1.5 text-[11px] font-mono uppercase tracking-[0.12em] transition-colors ${
+                statusFilter === f.key
+                  ? "bg-white/10 text-zinc-200"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-sm text-zinc-500">Nessuna officina corrisponde ai filtri.</p>
+      ) : (
+        <div className="space-y-4">
+      {filtered.map((workshop) => {
         const isProtected = !!platformWorkshopId && workshop.id === platformWorkshopId;
         const isEditing = editingWorkshopId === workshop.id;
 
@@ -383,6 +433,22 @@ export function WorkshopListTable({
                 {workshop.closedReason && (
                   <p className="text-[10px] text-zinc-600">Motivo: {workshop.closedReason}</p>
                 )}
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-zinc-500">
+                  <span>
+                    <span className="text-zinc-300">{workshop.workOrderCount}</span> schede
+                  </span>
+                  <span>
+                    <span className="text-zinc-300">{workshop.activeUserCount}</span> utenti attivi
+                  </span>
+                  <span>
+                    Ultima attività:{" "}
+                    <span className="text-zinc-300">
+                      {workshop.lastActivityAt
+                        ? new Date(workshop.lastActivityAt).toLocaleDateString("it-IT")
+                        : "—"}
+                    </span>
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span className={`text-[11px] font-mono ${STATUS_COLORS[workshop.status] ?? "text-zinc-400"}`}>
@@ -448,6 +514,8 @@ export function WorkshopListTable({
           </div>
         );
       })}
+        </div>
+      )}
     </div>
   );
 }

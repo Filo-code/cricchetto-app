@@ -23,6 +23,9 @@ export interface AdminWorkshopListItem {
   city: string | null;
   timezone: string;
   users: AdminWorkshopUser[];
+  workOrderCount: number;
+  lastActivityAt: string | null;
+  activeUserCount: number;
 }
 
 export async function listWorkshopsForAdmin(): Promise<AdminWorkshopListItem[]> {
@@ -66,6 +69,27 @@ export async function listWorkshopsForAdmin(): Promise<AdminWorkshopListItem[]> 
     usersByWorkshop.set(u.workshop_id, list);
   }
 
+  // Usage metrics: work-order count + last activity per workshop.
+  // MVP scale (few tenants, bounded work orders) — fetch ids+created_at and aggregate in JS.
+  // Revisit with a grouped RPC if work_orders grows large.
+  const woCountByWorkshop = new Map<string, number>();
+  const lastActivityByWorkshop = new Map<string, string>();
+  const { data: workOrders, error: woErr } = await supabaseServer
+    .from("work_orders")
+    .select("workshop_id,created_at")
+    .in("workshop_id", workshopIds);
+  if (woErr) {
+    console.warn("[admin/workshops] work_orders metrics skipped:", woErr.message);
+  } else {
+    for (const wo of (workOrders ?? []) as any[]) {
+      woCountByWorkshop.set(wo.workshop_id, (woCountByWorkshop.get(wo.workshop_id) ?? 0) + 1);
+      const prev = lastActivityByWorkshop.get(wo.workshop_id);
+      if (!prev || wo.created_at > prev) {
+        lastActivityByWorkshop.set(wo.workshop_id, wo.created_at as string);
+      }
+    }
+  }
+
   return rows.map((w) => ({
     id: w.id,
     name: (w.display_name ?? w.name) as string,
@@ -77,6 +101,9 @@ export async function listWorkshopsForAdmin(): Promise<AdminWorkshopListItem[]> 
     city: cityByWorkshop.get(w.id) ?? null,
     timezone: (w.timezone ?? "Europe/Rome") as string,
     users: usersByWorkshop.get(w.id) ?? [],
+    workOrderCount: woCountByWorkshop.get(w.id) ?? 0,
+    lastActivityAt: lastActivityByWorkshop.get(w.id) ?? null,
+    activeUserCount: (usersByWorkshop.get(w.id) ?? []).filter((u) => u.isActive).length,
   }));
 }
 
