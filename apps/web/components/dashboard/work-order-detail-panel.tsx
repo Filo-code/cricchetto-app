@@ -9,7 +9,7 @@ import { WorkOrderStatusBadge } from "./work-order-status-badge";
 export function WorkOrderDetailPanel({ detail }: { detail: DashboardWorkOrderDetail }) {
   const workOrder = detail.workOrder;
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.5fr,0.9fr]">
+    <div className="grid gap-5 md:grid-cols-[1.5fr,0.9fr]">
       <Card>
         <div className="mb-4 flex justify-end">
           <ButtonLink href={`/dashboard/vehicles/${encodeURIComponent(workOrder.plate)}`} aria-label="Storico veicolo">
@@ -17,7 +17,7 @@ export function WorkOrderDetailPanel({ detail }: { detail: DashboardWorkOrderDet
             Storico auto
           </ButtonLink>
         </div>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Badge tone="amber" dot>

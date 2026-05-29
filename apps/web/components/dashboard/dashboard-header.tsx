@@ -55,7 +55,7 @@ export function DashboardHeader({
           {subtitle}
         </p>
       </div>
-      <div className={`flex flex-wrap gap-2${centered ? " justify-center" : ""}`}>
+      <div className={`hidden lg:flex flex-wrap gap-2${centered ? " justify-center" : ""}`}>
         <ButtonLink href="/dashboard" aria-label="Torna al cruscotto" className="shrink-0">
           <Gauge className="h-4 w-4" />
           Cruscotto

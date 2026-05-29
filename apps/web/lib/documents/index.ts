@@ -638,6 +638,22 @@ function buildPdfTextStream(lines: string[]): string {
 
 function escapePdfText(value: string): string {
   return value
+    .replace(/[àáâãäå]/g, "a")
+    .replace(/[èéêë]/g, "e")
+    .replace(/[ìíîï]/g, "i")
+    .replace(/[òóôõö]/g, "o")
+    .replace(/[ùúûü]/g, "u")
+    .replace(/[ýÿ]/g, "y")
+    .replace(/[ÀÁÂÃÄÅ]/g, "A")
+    .replace(/[ÈÉÊË]/g, "E")
+    .replace(/[ÌÍÎÏ]/g, "I")
+    .replace(/[ÒÓÔÕÖ]/g, "O")
+    .replace(/[ÙÚÛÜ]/g, "U")
+    .replace(/[Ý]/g, "Y")
+    .replace(/ç/g, "c")
+    .replace(/Ç/g, "C")
+    .replace(/ñ/g, "n")
+    .replace(/Ñ/g, "N")
     .normalize("NFKD")
     .replace(/[^\x20-\x7E]/g, "")
     .replace(/\\/g, "\\\\")

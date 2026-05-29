@@ -137,9 +137,8 @@ export function WorkshopDocumentTemplatesForm({
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
         <p className="text-xs leading-5 text-zinc-600">
           <span className="text-zinc-400">Campi supportati:</span>{" "}
-          workshop_name, public_code, plate, vehicle_model, customer_name, customer_phone, kilometers, reported_issue,
-          items_text, parts_text, labor_text, subtotal, total, document_date, legal_text, footer_text,
-          workshop_vat, workshop_address, workshop_phone, workshop_email.
+          workshop_name, workshop_vat, workshop_tax_code, workshop_address, workshop_postal_code, workshop_province, workshop_city, workshop_phone, workshop_email, public_code, plate, vehicle_model, customer_name, customer_phone, kilometers, reported_issue,
+          items_text, parts_text, labor_text, subtotal, total, document_date, legal_text, footer_text, document_type.
         </p>
       </div>
       <div className="space-y-3">

@@ -450,7 +450,7 @@ export async function uploadWorkshopDocumentTemplateAction(_state: DashboardActi
     const settings = await getWorkshopSettings();
     await uploadWorkshopDocumentTemplate({ workshopId: settings.id, documentType, file, actorRef: "dashboard" });
     revalidatePath("/dashboard/settings");
-    return successState("Caricato, non ancora applicato automaticamente ai PDF.");
+    return successState("Template caricato. Verrà usato per i prossimi PDF generati.");
   } catch (error) {
     return errorState(error);
   }

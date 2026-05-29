@@ -8,7 +8,7 @@ export function WorkOrderSummaryCard({ workOrder }: { workOrder: DashboardWorkOr
   return (
     <Link
       href={`/dashboard/work-orders/${workOrder.id}`}
-      className="group relative block overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] p-3.5 transition-all duration-300 ease-out-quint hover:-translate-y-[1px] hover:border-accent/25 hover:bg-white/[0.03] hover:shadow-[0_8px_24px_-12px_rgba(214,179,106,0.20)] focus-visible:border-accent/35 focus-visible:outline-none"
+      className="group relative block overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 sm:p-3.5 transition-all duration-300 ease-out-quint hover:-translate-y-[1px] hover:border-accent/25 hover:bg-white/[0.03] hover:shadow-[0_8px_24px_-12px_rgba(214,179,106,0.20)] focus-visible:border-accent/35 focus-visible:outline-none"
     >
       <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-accent/[0.05] opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" aria-hidden />
 
@@ -28,7 +28,7 @@ export function WorkOrderSummaryCard({ workOrder }: { workOrder: DashboardWorkOr
       <p className="relative mt-2 line-clamp-1 text-[13px] leading-5 text-zinc-400">{workOrder.reportedIssue}</p>
 
       {/* Meta: customer left · amount right · date far right */}
-      <div className="relative mt-2.5 flex items-center justify-between gap-3 text-[11.5px]">
+      <div className="relative mt-2.5 flex items-center justify-between gap-3 text-xs sm:text-[11.5px]">
         <div className="flex min-w-0 items-center gap-1.5 text-zinc-600">
           <UserRound className="h-3 w-3 shrink-0" />
           <span className="truncate">{workOrder.customerName ?? "—"}</span>

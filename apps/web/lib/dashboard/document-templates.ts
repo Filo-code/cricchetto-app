@@ -114,12 +114,14 @@ export async function deactivateWorkshopDocumentTemplate(input: {
   templateId: string;
 }): Promise<void> {
   const { workshopId, templateId } = input;
-  const { error } = await (supabaseServer as any)
+  const { error, count } = await (supabaseServer as any)
     .from("workshop_document_templates")
     .update({ is_active: false })
     .eq("id", templateId)
     .eq("workshop_id", workshopId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .select();
 
   if (error) throw new Error(`Disattivazione template fallita: ${error.message}`);
+  if (count === 0) throw new Error("Template non trovato o già inattivo");
 }

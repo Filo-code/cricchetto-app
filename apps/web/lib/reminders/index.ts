@@ -150,7 +150,23 @@ export async function scheduleRevisionReminders(input: {
   mechanicIdentifier?: string;
   customerIdentifier?: string | null;
   preferredChannel?: Channel | null;
+  vehiclePlate?: string | null;
+  customerName?: string | null;
 }): Promise<void> {
+  // Fetch vehicle details if plate/customer_name not provided
+  let plate = input.vehiclePlate;
+  let customerName = input.customerName;
+  if (!plate || !customerName) {
+    const vehicle = await supabaseServer
+      .from("vehicles")
+      .select("plate_normalized")
+      .eq("id", input.vehicleId)
+      .maybeSingle();
+    if (vehicle?.data) {
+      plate = plate ?? vehicle.data.plate_normalized;
+    }
+  }
+
   for (const offset of input.offsets) {
     const reminderType = `revision_due_${offset}d` as ReminderType;
     if (!["revision_due_35d", "revision_due_30d", "revision_due_7d", "revision_due_1d"].includes(reminderType)) {
@@ -167,6 +183,8 @@ export async function scheduleRevisionReminders(input: {
       metadata: {
         revision_due_date: input.revisionDueDate,
         offset_days: offset,
+        plate: plate ?? null,
+        customer_name: customerName ?? null,
         ...(input.preferredChannel ? { preferred_channel: input.preferredChannel } : {}),
       },
     });
@@ -598,7 +616,16 @@ function reminderText(reminder: DueReminderRow): string {
   if (reminder.reminder_type === "ready_not_collected") {
     return "Promemoria: veicolo pronto non ancora ritirato.";
   }
-  return `Promemoria revisione: scadenza ${reminder.metadata?.revision_due_date ?? "non disponibile"}.`;
+  if (reminder.reminder_type.startsWith("revision_due_")) {
+    const firstName = typeof reminder.metadata?.customer_name === "string"
+      ? reminder.metadata.customer_name.trim().split(/\s+/)[0]
+      : "Cliente";
+    const plate = typeof reminder.metadata?.plate === "string" ? reminder.metadata.plate : "";
+    const offsetDays = typeof reminder.metadata?.offset_days === "number" ? reminder.metadata.offset_days : 0;
+    const dueDate = typeof reminder.metadata?.revision_due_date === "string" ? reminder.metadata.revision_due_date : "";
+    return `Ciao ${firstName}, la revisione del veicolo ${plate} scade tra ${offsetDays} giorni (${dueDate}).`;
+  }
+  return "Promemoria non disponibile.";
 }
 
 function buildInitialReminderTargetMetadata(reminder: DueReminderRow, route: ReminderDispatchRoute): Record<string, Record<string, unknown>> {
