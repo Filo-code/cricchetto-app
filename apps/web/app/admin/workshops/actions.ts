@@ -8,6 +8,7 @@ import { generatePasswordResetToken } from "../../../lib/dashboard/users";
 import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
 import { resetPlatformWorkshopData, type DemoResetCounts } from "../../../lib/admin/workshop-reset";
 import { populateDemoWorkshopData, type DemoPopulateCounts } from "../../../lib/admin/workshop-populate";
+import { writePlatformAuditEvent } from "../../../lib/admin/platform-audit";
 
 export interface CreateWorkshopActionState {
   ok: boolean;
@@ -22,8 +23,9 @@ export async function createWorkshopAction(
 ): Promise<CreateWorkshopActionState> {
   // Defense-in-depth: re-verify platform owner in the action itself.
   // workshop_users.role = 'owner' is client-scoped and is NOT sufficient here.
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -43,6 +45,13 @@ export async function createWorkshopAction(
 
   try {
     const result = await provisionWorkshop({ workshopName, ownerEmail, ownerName, city, timezone });
+    await writePlatformAuditEvent({
+      eventType: "workshop.create",
+      actorEmail: session.email,
+      targetWorkshopId: result.workshopId,
+      targetUserId: result.userId,
+      details: { workshopName, ownerEmail, city: city ?? null },
+    });
     return { ok: true, message: "Officina creata con successo.", result, stamp: Date.now() };
   } catch (err) {
     const raw = err instanceof Error ? err.message : "";
@@ -65,8 +74,9 @@ export async function suspendWorkshopAction(
   _state: WorkshopStatusActionState,
   formData: FormData,
 ): Promise<WorkshopStatusActionState> {
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -78,6 +88,7 @@ export async function suspendWorkshopAction(
   }
   try {
     await setWorkshopStatus(workshopId, "suspended");
+    await writePlatformAuditEvent({ eventType: "workshop.suspend", actorEmail: session.email, targetWorkshopId: workshopId });
     revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina sospesa.", stamp: Date.now() };
   } catch (err) {
@@ -89,8 +100,9 @@ export async function closeWorkshopAction(
   _state: WorkshopStatusActionState,
   formData: FormData,
 ): Promise<WorkshopStatusActionState> {
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -103,6 +115,7 @@ export async function closeWorkshopAction(
   }
   try {
     await setWorkshopStatus(workshopId, "closed", reason);
+    await writePlatformAuditEvent({ eventType: "workshop.close", actorEmail: session.email, targetWorkshopId: workshopId, details: reason ? { reason } : {} });
     revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina chiusa.", stamp: Date.now() };
   } catch (err) {
@@ -114,8 +127,9 @@ export async function reactivateWorkshopAction(
   _state: WorkshopStatusActionState,
   formData: FormData,
 ): Promise<WorkshopStatusActionState> {
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -126,6 +140,7 @@ export async function reactivateWorkshopAction(
   // reactivation from those states should never occur. Allow it anyway as a safety valve.
   try {
     await setWorkshopStatus(workshopId, "active");
+    await writePlatformAuditEvent({ eventType: "workshop.reactivate", actorEmail: session.email, targetWorkshopId: workshopId });
     revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina riattivata.", stamp: Date.now() };
   } catch (err) {
@@ -144,8 +159,9 @@ export async function generateUserResetLinkAction(
   _state: ResetPasswordActionState,
   formData: FormData,
 ): Promise<ResetPasswordActionState> {
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -162,6 +178,8 @@ export async function generateUserResetLinkAction(
     const baseUrl = rawBaseUrl.replace(/\/$/, "");
     // Raw token returned to caller once. Never logged.
     const resetLink = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;
+    // Audit the link generation — token itself is never recorded.
+    await writePlatformAuditEvent({ eventType: "user.reset_link", actorEmail: session.email, targetUserId: userId });
     return {
       ok: true,
       message: `Link generato. Valido fino a ${expiresAt.toLocaleString("it-IT")}.`,
@@ -183,8 +201,9 @@ export async function updateWorkshopAdminAction(
   _state: UpdateWorkshopActionState,
   formData: FormData,
 ): Promise<UpdateWorkshopActionState> {
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -210,6 +229,12 @@ export async function updateWorkshopAdminAction(
       ownerUserId,
       ownerDisplayName: ownerDisplayName || null,
     });
+    await writePlatformAuditEvent({
+      eventType: "workshop.update",
+      actorEmail: session.email,
+      targetWorkshopId: workshopId,
+      details: { displayName, city: city || null, timezone: timezone || null },
+    });
     revalidatePath("/admin/workshops");
     return { ok: true, message: "Officina aggiornata.", stamp: Date.now() };
   } catch (err) {
@@ -233,8 +258,9 @@ export async function resetDemoWorkshopAction(
   formData: FormData,
 ): Promise<DemoResetActionState> {
   // Defense-in-depth: platform owner only — never workshop DB users.
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -261,9 +287,10 @@ export async function resetDemoWorkshopAction(
 
   try {
     const counts = await resetPlatformWorkshopData(platformWorkshopId);
+    const totalRows = (Object.values(counts) as number[]).reduce((a, b) => a + b, 0);
+    await writePlatformAuditEvent({ eventType: "demo.reset", actorEmail: session.email, targetWorkshopId: platformWorkshopId, details: { totalRows } });
     revalidatePath("/admin/workshops");
     revalidatePath("/dashboard");
-    const totalRows = (Object.values(counts) as number[]).reduce((a, b) => a + b, 0);
     return {
       ok: true,
       message: `Reset completato. ${totalRows} righe eliminate.`,
@@ -290,8 +317,9 @@ export async function populateDemoWorkshopAction(
   _state: DemoPopulateActionState,
   formData: FormData,
 ): Promise<DemoPopulateActionState> {
+  let session;
   try {
-    await requirePlatformOwnerSession();
+    session = await requirePlatformOwnerSession();
   } catch {
     return { ok: false, message: "Accesso negato.", stamp: Date.now() };
   }
@@ -317,6 +345,7 @@ export async function populateDemoWorkshopAction(
 
   try {
     const counts = await populateDemoWorkshopData(platformWorkshopId);
+    await writePlatformAuditEvent({ eventType: "demo.populate", actorEmail: session.email, targetWorkshopId: platformWorkshopId, details: { created: counts.created } });
     revalidatePath("/admin/workshops");
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/work-orders");
