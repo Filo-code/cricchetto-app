@@ -6,6 +6,7 @@ import { timingSafeEqualString } from "../crypto";
 import { isPlatformSession } from "../admin/platform-session";
 import { readDashboardWorkshop } from "./read";
 import { findWorkshopUserByEmail, findWorkshopUserById, verifyPassword } from "./users";
+import { requireWorkshopAccess } from "../subscription";
 import {
   COOKIE_NAME,
   type DashboardSessionPayload,
@@ -40,6 +41,15 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
     && !isPlatformSession(session)
   ) {
     redirect("/login?account=suspended");
+  }
+
+  // Gate expired trials and blocked subscriptions. Platform owners bypass this check.
+  if (!isPlatformSession(session)) {
+    try {
+      await requireWorkshopAccess(workshop.id);
+    } catch {
+      redirect("/login?account=blocked");
+    }
   }
 
   // Validate session_version against DB to invalidate sessions after password change.

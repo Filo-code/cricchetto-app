@@ -3,6 +3,7 @@ import { reconcileStaleDocuments } from "../documents";
 import { assertValidPlate, normalizePlate } from "../plates";
 import { supabaseServer } from "../supabase-server";
 import { peekDashboardSession } from "./session-core";
+import { mergeByKey } from "./query-utils";
 import { addDays, getLocalDate } from "../time";
 import type { DocumentStatus, WorkOrderStatus } from "../types";
 import type {
@@ -392,43 +393,48 @@ export async function readDashboardWorkshop(): Promise<{ id: string; name: strin
 async function readSearchVehicles(workshopId: string, query: string): Promise<DashboardSearchVehicle[]> {
   const plateQuery = normalizePlate(query).replace(/[%_]/g, "");
   const nameQuery = query.replace(/[%_]/g, "");
-  const vehiclesById = new Map<string, any>();
 
-  if (plateQuery.length >= 2) {
-    const { data, error } = await supabaseServer
-      .from("vehicles")
-      .select("id,customer_id,plate_normalized,model,revision_due_date,updated_at")
-      .eq("workshop_id", workshopId)
-      .ilike("plate_normalized", `%${plateQuery}%`)
-      .order("updated_at", { ascending: false })
-      .limit(8);
-    if (error) throw new Error(`Failed to search vehicles by plate: ${error.message}`);
-    for (const row of data ?? []) vehiclesById.set(row.id, row);
-  }
-
-  if (nameQuery.length >= 2) {
-    const { data: customers, error: customerError } = await supabaseServer
-      .from("customers")
-      .select("id,name")
-      .eq("workshop_id", workshopId)
-      .ilike("name", `%${nameQuery}%`)
-      .order("updated_at", { ascending: false })
-      .limit(12);
-    if (customerError) throw new Error(`Failed to search customers: ${customerError.message}`);
-
-    const customerIds = (customers ?? []).map((customer) => customer.id);
-    if (customerIds.length > 0) {
-      const { data, error } = await supabaseServer
-        .from("vehicles")
-        .select("id,customer_id,plate_normalized,model,revision_due_date,updated_at")
-        .eq("workshop_id", workshopId)
-        .in("customer_id", customerIds)
-        .order("updated_at", { ascending: false })
-        .limit(12);
-      if (error) throw new Error(`Failed to search vehicles by customer: ${error.message}`);
-      for (const row of data ?? []) vehiclesById.set(row.id, row);
-    }
-  }
+  const vehiclesById = await mergeByKey(
+    [
+      plateQuery.length >= 2
+        ? async () => {
+            const { data, error } = await supabaseServer
+              .from("vehicles")
+              .select("id,customer_id,plate_normalized,model,revision_due_date,updated_at")
+              .eq("workshop_id", workshopId)
+              .ilike("plate_normalized", `%${plateQuery}%`)
+              .order("updated_at", { ascending: false })
+              .limit(8);
+            if (error) throw new Error(`Failed to search vehicles by plate: ${error.message}`);
+            return data ?? [];
+          }
+        : null,
+      nameQuery.length >= 2
+        ? async () => {
+            const { data: customers, error: customerError } = await supabaseServer
+              .from("customers")
+              .select("id,name")
+              .eq("workshop_id", workshopId)
+              .ilike("name", `%${nameQuery}%`)
+              .order("updated_at", { ascending: false })
+              .limit(12);
+            if (customerError) throw new Error(`Failed to search customers: ${customerError.message}`);
+            const customerIds = (customers ?? []).map((customer) => customer.id);
+            if (customerIds.length === 0) return [];
+            const { data, error } = await supabaseServer
+              .from("vehicles")
+              .select("id,customer_id,plate_normalized,model,revision_due_date,updated_at")
+              .eq("workshop_id", workshopId)
+              .in("customer_id", customerIds)
+              .order("updated_at", { ascending: false })
+              .limit(12);
+            if (error) throw new Error(`Failed to search vehicles by customer: ${error.message}`);
+            return data ?? [];
+          }
+        : null,
+    ].filter((q): q is () => Promise<any[]> => q !== null),
+    (row) => row.id as string,
+  );
 
   const vehicles = [...vehiclesById.values()].slice(0, 12);
   const [customersById, activeByPlate] = await Promise.all([
@@ -453,9 +459,8 @@ async function readSearchVehicles(workshopId: string, query: string): Promise<Da
 async function readSearchWorkOrders(workshopId: string, query: string, activeOnly: boolean): Promise<DashboardWorkOrderSummary[]> {
   const plateQuery = normalizePlate(query).replace(/[%_]/g, "");
   const nameQuery = query.replace(/[%_]/g, "");
-  const rowsById = new Map<string, any>();
 
-  async function addRows(column: "plate_normalized" | "customer_name_snapshot", value: string): Promise<void> {
+  const fetchWorkOrders = (column: "plate_normalized" | "customer_name_snapshot", value: string) => async () => {
     let request = supabaseServer
       .from("work_orders")
       .select("id,workshop_id,vehicle_id,public_code,plate_snapshot,plate_normalized,vehicle_model_snapshot,customer_name_snapshot,customer_phone_snapshot,status,reported_issue,kilometers,ready_at,collected_at,created_at,updated_at")
@@ -463,24 +468,23 @@ async function readSearchWorkOrders(workshopId: string, query: string, activeOnl
       .ilike(column, `%${value}%`)
       .order("updated_at", { ascending: false })
       .limit(10);
-
     if (activeOnly) {
       request = request.in("status", ACTIVE_STATUSES);
     } else {
       request = request.not("status", "in", `(${ACTIVE_STATUSES.join(",")})`);
     }
-
     const { data, error } = await request;
     if (error) throw new Error(`Failed to search work orders: ${error.message}`);
-    for (const row of data ?? []) rowsById.set(row.id, row);
-  }
+    return data ?? [];
+  };
 
-  if (plateQuery.length >= 2) {
-    await addRows("plate_normalized", plateQuery);
-  }
-  if (nameQuery.length >= 2) {
-    await addRows("customer_name_snapshot", nameQuery);
-  }
+  const rowsById = await mergeByKey(
+    [
+      plateQuery.length >= 2 ? fetchWorkOrders("plate_normalized", plateQuery) : null,
+      nameQuery.length >= 2 ? fetchWorkOrders("customer_name_snapshot", nameQuery) : null,
+    ].filter((q): q is () => Promise<any[]> => q !== null),
+    (row) => row.id as string,
+  );
 
   const rows = [...rowsById.values()]
     .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))

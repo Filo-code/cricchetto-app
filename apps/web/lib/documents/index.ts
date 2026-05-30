@@ -74,10 +74,13 @@ export async function buildSendDocumentCommandResult(input: {
   const label = DOCUMENT_TYPE_LABELS[input.documentType];
   const idempotencyKey = `outbound:send-document:${workOrder.id}:${input.documentType}:${input.providerMessageId}`;
 
+  const attachmentContext = { kind: "work_order" as const, id: workOrder.id };
+
   if (!latest) {
     return {
       parseStatus: "not_found",
       relatedWorkOrderId: workOrder.id,
+      attachmentContext,
       replies: [{
         recipientIdentifier: input.recipientIdentifier,
         text: `Nessun ${label} disponibile per ${workOrder.plate_normalized}.\nGenera prima il documento.`,
@@ -90,6 +93,7 @@ export async function buildSendDocumentCommandResult(input: {
     return {
       parseStatus: "processed",
       relatedWorkOrderId: workOrder.id,
+      attachmentContext,
       replies: [{
         recipientIdentifier: input.recipientIdentifier,
         text: `${capitalize(label)} per ${workOrder.plate_normalized} in preparazione.\nRiprova tra poco.`,
@@ -103,6 +107,7 @@ export async function buildSendDocumentCommandResult(input: {
     return {
       parseStatus: "validation_failed",
       relatedWorkOrderId: workOrder.id,
+      attachmentContext,
       replies: [{
         recipientIdentifier: input.recipientIdentifier,
         text: `${capitalize(label)} per ${workOrder.plate_normalized} non disponibile.\nContatta assistenza.`,
@@ -131,6 +136,7 @@ export async function buildSendDocumentCommandResult(input: {
   return {
     parseStatus: "processed",
     relatedWorkOrderId: workOrder.id,
+    attachmentContext,
     replies: [{
       recipientIdentifier: input.recipientIdentifier,
       text,
@@ -226,6 +232,18 @@ export async function enqueueDocumentGeneration(input: DocumentRequestInput): Pr
   if (error) {
     throw new Error(`Failed to enqueue document generation: ${error.message}`);
   }
+}
+
+export async function requestDocument(workshopId: string, input: Omit<DocumentRequestInput, "workshopId">): Promise<void> {
+  await enqueueDocumentGeneration({ workshopId, ...input });
+  processPendingDocuments(1).catch((err: unknown) => {
+    console.warn("[documents.requestDocument] eager_process_failed", {
+      workshopId,
+      workOrderId: input.workOrderId,
+      documentType: input.documentType,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+  });
 }
 
 export async function processPendingDocuments(limit = 10): Promise<{

@@ -6,14 +6,31 @@ import { completeIntakeAtomically } from "../intake";
 import { enqueueDocumentGeneration, processPendingDocuments } from "../documents";
 import { CUSTOMER_PHONE_VALIDATION_MESSAGE, normalizeCustomerPhone } from "../phones";
 import { assertValidPlate } from "../plates";
-import { scheduleReadyReminder, scheduleReadyPickupNotification, cancelReadyReminders } from "../reminders";
 import { supabaseServer } from "../supabase-server";
-import type { Channel, CommandExecutionResult, RecipientPolicy } from "../types";
+import type { Channel, CommandEffect, CommandExecutionResult, RecipientPolicy, WorkOrderStatus } from "../types";
 
 type WorkOrderMutationSource = Channel | "dashboard" | "system";
 type WorkOrderActorType = "mechanic" | "dashboard_user" | "system";
 
 const ACTIVE_STATUSES = ["accepted", "in_progress", "ready"];
+
+const ALLOWED_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> = {
+  accepted:    ["ready", "archived"],
+  in_progress: ["ready", "archived"],
+  ready:       ["collected"],
+  collected:   [],
+  archived:    [],
+};
+
+function assertTransitionAllowed(from: WorkOrderStatus, to: WorkOrderStatus, plate: string): void {
+  if (!ALLOWED_TRANSITIONS[from]?.includes(to)) {
+    throw new AppError(`Cannot transition work order from ${from} to ${to}`, {
+      statusCode: 409,
+      parseStatus: "validation_failed",
+      publicMessage: `${plate}: operazione non consentita (stato attuale: ${from}).`,
+    });
+  }
+}
 
 export interface WorkOrderLookupInput {
   workshopId: string;
@@ -63,7 +80,12 @@ export async function getActiveWorkOrderByPlate(input: WorkOrderLookupInput): Pr
 export async function handleStatus(workshopId: string, plate: string): Promise<CommandExecutionResult> {
   const workOrder = await requireActiveWorkOrder(workshopId, plate);
   const totals = await getTotals(workshopId, workOrder.id);
-  return reply(`${plate}\nStato: ${statusLabel(workOrder.status)}\nTotale: ${formatMoney(totals.grand_total)}\nCodice: ${workOrder.public_code}`, workOrder.id);
+  return {
+    parseStatus: "processed",
+    relatedWorkOrderId: workOrder.id,
+    replies: [{ recipientIdentifier: "", text: `${plate}\nStato: ${statusLabel(workOrder.status)}\nTotale: ${formatMoney(totals.grand_total)}\nCodice: ${workOrder.public_code}`, idempotencyKey: "" }],
+    attachmentContext: { kind: "work_order", id: workOrder.id },
+  };
 }
 
 export async function createDashboardWorkOrder(input: DashboardWorkOrderCreateInput): Promise<DashboardWorkOrderCreateResult> {
@@ -156,27 +178,23 @@ export async function createDashboardWorkOrder(input: DashboardWorkOrderCreateIn
 
 export async function addNote(workshopId: string, plate: string, text: string, actorRef: string, source: WorkOrderMutationSource): Promise<CommandExecutionResult> {
   const workOrder = await requireMutableWorkOrder(workshopId, plate);
-  const { data, error } = await supabaseServer.from("work_order_notes").insert({
-    workshop_id: workshopId,
-    work_order_id: workOrder.id,
-    note: text,
-    source,
-    created_by: actorRef,
-  }).select("id,note").single();
-
-  if (error) {
-    throw new Error(`Failed to insert note: ${error.message}`);
-  }
-  await writeAuditEvent({
-    workshopId,
-    workOrderId: workOrder.id,
-    eventType: "note_created",
-    actorType: "mechanic",
-    actorRef,
-    after: data,
-  });
-
-  return reply(`Nota aggiunta a ${plate}.`, workOrder.id);
+  const noteId = randomUUID();
+  return {
+    parseStatus: "processed",
+    relatedWorkOrderId: workOrder.id,
+    replies: [{ recipientIdentifier: "", text: `Nota aggiunta a ${plate}.`, idempotencyKey: "" }],
+    attachmentContext: { kind: "work_order", id: workOrder.id },
+    effects: [
+      {
+        type: "insert_note",
+        payload: { id: noteId, workOrderId: workOrder.id, note: text, source, createdBy: actorRef },
+      },
+      {
+        type: "write_audit",
+        payload: { workOrderId: workOrder.id, eventType: "note_created", actorType: "mechanic", actorRef, after: { id: noteId, note: text } },
+      },
+    ],
+  };
 }
 
 export async function addPart(input: {
@@ -189,61 +207,47 @@ export async function addPart(input: {
   source: WorkOrderMutationSource;
 }): Promise<CommandExecutionResult> {
   const workOrder = await requireMutableWorkOrder(input.workshopId, input.plate);
-  const { data, error } = await supabaseServer.from("work_order_items").insert({
-    workshop_id: input.workshopId,
-    work_order_id: workOrder.id,
-    item_type: "part",
-    description: input.description,
-    quantity: input.quantity,
-    unit_price: input.unitPrice,
-    source: input.source,
-    created_by: input.actorRef,
-  }).select("id,description,quantity,unit_price").single();
-
-  if (error) {
-    throw new Error(`Failed to insert part: ${error.message}`);
-  }
-  await writeAuditEvent({
-    workshopId: input.workshopId,
-    workOrderId: workOrder.id,
-    eventType: "item_created",
-    actorType: "mechanic",
-    actorRef: input.actorRef,
-    after: data,
-  });
-
+  const itemId = randomUUID();
   const rowTotal = input.quantity * input.unitPrice;
-  return reply(`Ricambio aggiunto:\n${input.description}\n${formatDecimal(input.quantity)} x ${input.unitPrice.toFixed(2).replace(".", ",")} = ${formatMoney(rowTotal)}`, workOrder.id);
+  return {
+    parseStatus: "processed",
+    relatedWorkOrderId: workOrder.id,
+    replies: [{ recipientIdentifier: "", text: `Ricambio aggiunto:\n${input.description}\n${formatDecimal(input.quantity)} x ${input.unitPrice.toFixed(2).replace(".", ",")} = ${formatMoney(rowTotal)}`, idempotencyKey: "" }],
+    attachmentContext: { kind: "work_order", id: workOrder.id },
+    effects: [
+      {
+        type: "insert_work_order_item",
+        payload: { id: itemId, workOrderId: workOrder.id, itemType: "part", description: input.description, quantity: input.quantity, unitPrice: input.unitPrice, source: input.source, createdBy: input.actorRef },
+      },
+      {
+        type: "write_audit",
+        payload: { workOrderId: workOrder.id, eventType: "item_created", actorType: "mechanic", actorRef: input.actorRef, after: { id: itemId, description: input.description, quantity: input.quantity, unit_price: input.unitPrice } },
+      },
+    ],
+  };
 }
 
 export async function addLabor(workshopId: string, plate: string, hours: number, actorRef: string, source: WorkOrderMutationSource): Promise<CommandExecutionResult> {
   const workOrder = await requireMutableWorkOrder(workshopId, plate);
   const settings = await getSettings(workshopId);
   const hourlyRate = Number(settings.hourly_rate);
-  const { data, error } = await supabaseServer.from("work_order_items").insert({
-    workshop_id: workshopId,
-    work_order_id: workOrder.id,
-    item_type: "labor",
-    description: "Manodopera",
-    quantity: hours,
-    unit_price: hourlyRate,
-    source,
-    created_by: actorRef,
-  }).select("id,description,quantity,unit_price").single();
-
-  if (error) {
-    throw new Error(`Failed to insert labor: ${error.message}`);
-  }
-  await writeAuditEvent({
-    workshopId,
-    workOrderId: workOrder.id,
-    eventType: "item_created",
-    actorType: "mechanic",
-    actorRef,
-    after: data,
-  });
-
-  return reply(`Manodopera aggiunta:\n${formatDecimal(hours)} ore x ${hourlyRate.toFixed(2).replace(".", ",")} = ${formatMoney(hours * hourlyRate)}`, workOrder.id);
+  const itemId = randomUUID();
+  return {
+    parseStatus: "processed",
+    relatedWorkOrderId: workOrder.id,
+    replies: [{ recipientIdentifier: "", text: `Manodopera aggiunta:\n${formatDecimal(hours)} ore x ${hourlyRate.toFixed(2).replace(".", ",")} = ${formatMoney(hours * hourlyRate)}`, idempotencyKey: "" }],
+    attachmentContext: { kind: "work_order", id: workOrder.id },
+    effects: [
+      {
+        type: "insert_work_order_item",
+        payload: { id: itemId, workOrderId: workOrder.id, itemType: "labor", description: "Manodopera", quantity: hours, unitPrice: hourlyRate, source, createdBy: actorRef },
+      },
+      {
+        type: "write_audit",
+        payload: { workOrderId: workOrder.id, eventType: "item_created", actorType: "mechanic", actorRef, after: { id: itemId, description: "Manodopera", quantity: hours, unit_price: hourlyRate } },
+      },
+    ],
+  };
 }
 
 export async function closeWorkOrder(input: {
@@ -254,77 +258,42 @@ export async function closeWorkOrder(input: {
   actorType?: WorkOrderActorType;
 }): Promise<CommandExecutionResult> {
   const workOrder = await requireMutableWorkOrder(input.workshopId, input.plate);
-  if (workOrder.status === "ready") {
-    throw new AppError("Work order already ready", {
-      statusCode: 409,
-      parseStatus: "validation_failed",
-      publicMessage: `${input.plate} è già pronta per il ritiro.`,
-    });
-  }
+  assertTransitionAllowed(workOrder.status, "ready", input.plate);
   const before = { status: workOrder.status, ready_at: workOrder.ready_at };
   const readyAt = new Date().toISOString();
-  const { error } = await supabaseServer
-    .from("work_orders")
-    .update({ status: "ready", ready_at: readyAt })
-    .eq("workshop_id", input.workshopId)
-    .eq("id", workOrder.id);
-
-  if (error) {
-    throw new Error(`Failed to close work order: ${error.message}`);
-  }
-  await writeAuditEvent({
-    workshopId: input.workshopId,
-    workOrderId: workOrder.id,
-    eventType: "status_changed",
-    actorType: input.actorType ?? "mechanic",
-    actorRef: input.actorRef,
-    before,
-    after: { status: "ready", ready_at: readyAt },
-  });
-  await enqueueDocumentGeneration({
-    workshopId: input.workshopId,
-    workOrderId: workOrder.id,
-    documentType: "final_summary",
-    createdBy: input.actorRef,
-  });
-  await processPendingDocuments(1).catch((error) => {
-    console.warn("[work-orders.closeWorkOrder] document_processing_failed", {
-      workshopId: input.workshopId,
-      workOrderId: workOrder.id,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-  });
   const [settings, workshopDisplayName] = await Promise.all([
     getSettings(input.workshopId),
     getWorkshopDisplayName(input.workshopId),
   ]);
   const customerPhone = workOrder.customer_phone_snapshot ? normalizeCustomerPhone(workOrder.customer_phone_snapshot) : null;
-  await scheduleReadyReminder({
-    workshopId: input.workshopId,
-    workOrderId: workOrder.id,
-    readyAt,
-    readyReminderDays: settings.ready_reminder_days,
-    recipientPolicy: settings.ready_reminder_recipient_policy as RecipientPolicy,
-    mechanicIdentifier: input.mechanicIdentifier,
-    customerIdentifier: customerPhone,
-  });
-  scheduleReadyPickupNotification({
-    workshopId: input.workshopId,
-    workOrderId: workOrder.id,
-    readyAt,
-    customerIdentifier: customerPhone,
-    customerName: workOrder.customer_name_snapshot ?? null,
-    plate: workOrder.plate_normalized,
-    workshopDisplayName,
-  }).catch((err) => {
-    console.warn("[work-orders.closeWorkOrder] ready_pickup_schedule_failed", {
-      workshopId: input.workshopId,
-      workOrderId: workOrder.id,
-      errorMessage: err instanceof Error ? err.message : String(err),
-    });
-  });
-
-  return reply(`${input.plate} pronta per ritiro.\nRiepilogo finale in preparazione.`, workOrder.id);
+  return {
+    parseStatus: "processed",
+    relatedWorkOrderId: workOrder.id,
+    replies: [{ recipientIdentifier: "", text: `${input.plate} pronta per ritiro.\nRiepilogo finale in preparazione.`, idempotencyKey: "" }],
+    attachmentContext: { kind: "work_order", id: workOrder.id },
+    effects: [
+      {
+        type: "update_work_order_status",
+        payload: { workOrderId: workOrder.id, status: "ready", readyAt },
+      },
+      {
+        type: "write_audit",
+        payload: { workOrderId: workOrder.id, eventType: "status_changed", actorType: input.actorType ?? "mechanic", actorRef: input.actorRef, before, after: { status: "ready", ready_at: readyAt } },
+      },
+      {
+        type: "enqueue_document",
+        payload: { workOrderId: workOrder.id, documentType: "final_summary", createdBy: input.actorRef },
+      },
+      {
+        type: "schedule_reminder",
+        payload: { workOrderId: workOrder.id, readyAt, readyReminderDays: Number(settings.ready_reminder_days), recipientPolicy: settings.ready_reminder_recipient_policy as RecipientPolicy, mechanicIdentifier: input.mechanicIdentifier, customerIdentifier: customerPhone },
+      },
+      {
+        type: "schedule_pickup_notification",
+        payload: { workOrderId: workOrder.id, readyAt, customerIdentifier: customerPhone, customerName: workOrder.customer_name_snapshot ?? null, plate: workOrder.plate_normalized, workshopDisplayName },
+      },
+    ],
+  };
 }
 
 export async function generateEstimateDocument(input: {
@@ -383,36 +352,29 @@ export async function generateEstimateDocument(input: {
 
 export async function markCollected(workshopId: string, plate: string, actorRef: string, actorType: WorkOrderActorType = "mechanic"): Promise<CommandExecutionResult> {
   const workOrder = await requireActiveWorkOrder(workshopId, plate);
-  if (workOrder.status !== "ready") {
-    throw new AppError("Work order is not ready", {
-      statusCode: 409,
-      parseStatus: "validation_failed",
-      publicMessage: `${plate} deve essere pronta prima di segnarla come ritirata.`,
-    });
-  }
+  assertTransitionAllowed(workOrder.status, "collected", plate);
   const before = { status: workOrder.status, collected_at: workOrder.collected_at };
   const collectedAt = new Date().toISOString();
-  const { error } = await supabaseServer
-    .from("work_orders")
-    .update({ status: "collected", collected_at: collectedAt })
-    .eq("workshop_id", workshopId)
-    .eq("id", workOrder.id);
-
-  if (error) {
-    throw new Error(`Failed to mark collected: ${error.message}`);
-  }
-  await cancelReadyReminders(workshopId, workOrder.id);
-  await writeAuditEvent({
-    workshopId,
-    workOrderId: workOrder.id,
-    eventType: "status_changed",
-    actorType,
-    actorRef,
-    before,
-    after: { status: "collected", collected_at: collectedAt },
-  });
-
-  return reply(`${plate} segnata come ritirata.\nPromemoria fermati.`, workOrder.id);
+  return {
+    parseStatus: "processed",
+    relatedWorkOrderId: workOrder.id,
+    replies: [{ recipientIdentifier: "", text: `${plate} segnata come ritirata.\nPromemoria fermati.`, idempotencyKey: "" }],
+    attachmentContext: { kind: "work_order", id: workOrder.id },
+    effects: [
+      {
+        type: "update_work_order_status",
+        payload: { workOrderId: workOrder.id, status: "collected", collectedAt },
+      },
+      {
+        type: "cancel_reminders",
+        payload: { workOrderId: workOrder.id },
+      },
+      {
+        type: "write_audit",
+        payload: { workOrderId: workOrder.id, eventType: "status_changed", actorType, actorRef, before, after: { status: "collected", collected_at: collectedAt } },
+      },
+    ],
+  };
 }
 
 async function readCreatedWorkOrder(workshopId: string, workOrderId: string): Promise<{ public_code: string; plate_normalized: string }> {

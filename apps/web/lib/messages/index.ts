@@ -9,6 +9,8 @@ import { lookupRevision, listRevisionDue, updateRevisionByPlate } from "../revis
 import { resolveAuthorizedStaffByPhone } from "../staff";
 import { supabaseServer } from "../supabase-server";
 import { addLabor, addNote, addPart, closeWorkOrder, handleStatus, markCollected } from "../work-orders";
+import { requireWorkshopAccess } from "../subscription";
+import { executeCommandEffects } from "./effect-executor";
 import type {
   Channel,
   CommandExecutionResult,
@@ -88,13 +90,12 @@ export async function processNormalizedInbound(inbound: NormalizedInboundMessage
     } else {
       const command = parseCommand({ channel: inbound.channel, text: inbound.text });
       result = await executeParsedCommand(command, route, inbound);
-      if (hasAttachments) {
+      if (hasAttachments && result.attachmentContext) {
         await finalizeInboundAttachments({
           route,
           inbound,
           messageLogId: inboundLog.id,
-          command,
-          relatedWorkOrderId: result.relatedWorkOrderId,
+          attachmentContext: result.attachmentContext,
         });
       }
     }
@@ -139,6 +140,14 @@ export async function processNormalizedInbound(inbound: NormalizedInboundMessage
 }
 
 async function executeParsedCommand(command: ReturnType<typeof parseCommand>, route: WorkshopRoute, inbound: NormalizedInboundMessage): Promise<CommandExecutionResult> {
+  const result = await dispatchCommand(command, route, inbound);
+  if (result.effects?.length) {
+    await executeCommandEffects(route.workshopId, result.effects);
+  }
+  return result;
+}
+
+async function dispatchCommand(command: ReturnType<typeof parseCommand>, route: WorkshopRoute, inbound: NormalizedInboundMessage): Promise<CommandExecutionResult> {
   switch (command.kind) {
     case "NUOVA":
       return startIntake({ workshopId: route.workshopId, channel: inbound.channel, senderIdentifier: inbound.senderIdentifier, plate: command.plate });
@@ -344,9 +353,11 @@ async function searchByPlateOrCustomer(workshopId: string, query: string): Promi
 
   if (results.length === 1) {
     const result = results[0];
+    const resolvedWorkOrderId = result.activeWorkOrderId ?? result.latestWorkOrderId ?? undefined;
     return {
       parseStatus: "processed",
-      relatedWorkOrderId: result.activeWorkOrderId ?? result.latestWorkOrderId ?? undefined,
+      relatedWorkOrderId: resolvedWorkOrderId,
+      attachmentContext: resolvedWorkOrderId ? { kind: "work_order", id: resolvedWorkOrderId } : undefined,
       replies: [{
         recipientIdentifier: "",
         text: [
@@ -379,29 +390,21 @@ async function finalizeInboundAttachments(input: {
   route: WorkshopRoute;
   inbound: NormalizedInboundMessage;
   messageLogId: string;
-  command: ReturnType<typeof parseCommand>;
-  relatedWorkOrderId?: string;
+  attachmentContext: { kind: "intake" | "work_order"; id: string };
 }): Promise<void> {
-  if (input.command.kind === "NUOVA") {
-    const intake = await getActiveIntake(input.route.workshopId, input.inbound.channel, input.inbound.senderIdentifier);
-    if (intake?.id) {
-      await attachMessageAttachmentsToIntake({
-        workshopId: input.route.workshopId,
-        messageLogId: input.messageLogId,
-        intakeSessionId: intake.id,
-      });
-    }
-    return;
-  }
-
-  if (!input.relatedWorkOrderId) {
+  if (input.attachmentContext.kind === "intake") {
+    await attachMessageAttachmentsToIntake({
+      workshopId: input.route.workshopId,
+      messageLogId: input.messageLogId,
+      intakeSessionId: input.attachmentContext.id,
+    });
     return;
   }
 
   await attachMessageAttachmentsToWorkOrder({
     workshopId: input.route.workshopId,
     messageLogId: input.messageLogId,
-    workOrderId: input.relatedWorkOrderId,
+    workOrderId: input.attachmentContext.id,
     actorType: "mechanic",
     actorRef: input.inbound.senderIdentifier,
   });
@@ -441,7 +444,7 @@ async function resolveWorkshopRoute(inbound: NormalizedInboundMessage): Promise<
     });
   }
 
-  // Gate suspended/closed workshops: do not process new business mutations.
+  // Gate suspended/closed workshops and blocked subscriptions.
   const { data: workshop } = await supabaseServer
     .from("workshops")
     .select("status")
@@ -454,6 +457,8 @@ async function resolveWorkshopRoute(inbound: NormalizedInboundMessage): Promise<
       publicMessage: "Officina non attiva.",
     });
   }
+
+  await requireWorkshopAccess(data.workshop_id);
 
   return {
     workshopId: data.workshop_id,

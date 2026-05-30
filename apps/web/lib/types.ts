@@ -159,10 +159,27 @@ export interface ProviderSendResult {
   errorMessage?: string;
 }
 
+export type CommandEffectType =
+  | "insert_note"
+  | "insert_work_order_item"
+  | "update_work_order_status"
+  | "enqueue_document"
+  | "schedule_reminder"
+  | "schedule_pickup_notification"
+  | "cancel_reminders"
+  | "write_audit";
+
+export interface CommandEffect {
+  type: CommandEffectType;
+  payload: Record<string, unknown>;
+}
+
 export interface CommandExecutionResult {
   parseStatus?: ParseStatus;
   relatedWorkOrderId?: string;
   replies: Array<Omit<OutboundMessageRequest, "workshopId" | "channel" | "provider">>;
+  effects?: CommandEffect[];
+  attachmentContext?: { kind: "intake" | "work_order"; id: string };
 }
 
 export interface DashboardMutationEnvelope<TChanges> {

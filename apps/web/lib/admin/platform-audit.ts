@@ -8,6 +8,8 @@ export type PlatformAuditEventType =
   | "workshop.suspend"
   | "workshop.close"
   | "workshop.reactivate"
+  | "workshop.free_access_enabled"
+  | "workshop.free_access_disabled"
   | "user.reset_link"
   | "demo.reset"
   | "demo.populate";

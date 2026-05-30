@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { linkIntakeAttachmentsToWorkOrder } from "../attachments";
 import { enqueueDocumentGeneration, processPendingDocuments } from "../documents";
 import { AppError } from "../errors";
@@ -118,7 +119,9 @@ export async function startIntake(input: {
   senderIdentifier: string;
   plate: string;
 }): Promise<CommandExecutionResult> {
+  const sessionId = randomUUID();
   const { error } = await supabaseServer.from("intake_sessions").insert({
+    id: sessionId,
     workshop_id: input.workshopId,
     channel: input.channel,
     sender_identifier: input.senderIdentifier,
@@ -141,6 +144,7 @@ export async function startIntake(input: {
   return {
     parseStatus: "processed",
     replies: [{ recipientIdentifier: "", text: `Nuova scheda per ${input.plate}.\n${STEP_PROMPTS.vehicle_model}`, idempotencyKey: "" }],
+    attachmentContext: { kind: "intake", id: sessionId },
   };
 }
 
