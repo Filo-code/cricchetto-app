@@ -52,7 +52,7 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
     try {
       await requireWorkshopAccess(workshop.id);
     } catch {
-      redirect("/login?account=blocked");
+      redirect("/subscribe");
     }
   }
 

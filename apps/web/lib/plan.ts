@@ -19,12 +19,19 @@ export const PLAN_PRICES: Record<PlanType, { amount: number; currency: string; l
   pro:   { amount: 10900, currency: "eur", label: "Pro €109/mese" },
 };
 
-// Stripe Price IDs — set in environment per deployment.
-// Create these in the Stripe dashboard and add to env vars.
-// export const STRIPE_PRICE_IDS: Record<PlanType, string> = {
-//   basic: process.env.Cricchetto_STRIPE_PRICE_BASIC!,
-//   pro:   process.env.Cricchetto_STRIPE_PRICE_PRO!,
-// };
+/**
+ * Returns the Stripe Price ID for a given plan.
+ * Requires env vars: Cricchetto_STRIPE_PRICE_BASIC, Cricchetto_STRIPE_PRICE_PRO
+ */
+export function getStripePriceId(planType: PlanType): string {
+  const id = planType === "pro"
+    ? process.env.Cricchetto_STRIPE_PRICE_PRO
+    : process.env.Cricchetto_STRIPE_PRICE_BASIC;
+  if (!id || id === "REPLACE_ME") {
+    throw new Error(`Stripe price ID not configured for plan '${planType}'. Set Cricchetto_STRIPE_PRICE_${planType.toUpperCase()}.`);
+  }
+  return id;
+}
 
 export function planIncludesFeature(planType: PlanType, feature: PlanFeature): boolean {
   if (!PRO_FEATURES.has(feature)) {
