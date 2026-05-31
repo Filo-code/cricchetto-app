@@ -12,6 +12,8 @@ import {
   updateWorkshopAdminAction,
   resetDemoWorkshopAction,
   populateDemoWorkshopAction,
+  impersonateWorkshopAction,
+  resetWorkshopTrialAction,
   type WorkshopStatusActionState,
   type ResetPasswordActionState,
   type UpdateWorkshopActionState,
@@ -225,6 +227,38 @@ function UserResetLink({ userId, userEmail }: { userId: string; userEmail: strin
       </Button>
       {state.message && !state.ok && (
         <span className="ml-2 text-[10px] text-red-400">{state.message}</span>
+      )}
+    </form>
+  );
+}
+
+function ImpersonateButton({ workshopId }: { workshopId: string }) {
+  const [state, formAction] = useActionState(impersonateWorkshopAction, initialStatus);
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="workshopId" value={workshopId} />
+      <Button type="submit" variant="ghost" className="text-xs text-violet-400 hover:text-violet-300">
+        Impersona
+      </Button>
+      {state.message && !state.ok && (
+        <span className="ml-2 text-[10px] text-red-400">{state.message}</span>
+      )}
+    </form>
+  );
+}
+
+function ResetTrialButton({ workshopId }: { workshopId: string }) {
+  const [state, formAction] = useActionState(resetWorkshopTrialAction, initialStatus);
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="workshopId" value={workshopId} />
+      <Button type="submit" variant="ghost" className="text-xs text-amber-400 hover:text-amber-300">
+        Reset trial
+      </Button>
+      {state.message && (
+        <span className={`ml-2 text-[10px] ${state.ok ? "text-emerald-400" : "text-red-400"}`}>
+          {state.message}
+        </span>
       )}
     </form>
   );
@@ -500,6 +534,14 @@ export function WorkshopListTable({
                     <UserResetLink userId={user.id} userEmail={user.email} />
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Platform owner actions */}
+            {!isProtected && (
+              <div className="border-t border-white/[0.06] pt-3 flex flex-wrap gap-2">
+                <ImpersonateButton workshopId={workshop.id} />
+                <ResetTrialButton workshopId={workshop.id} />
               </div>
             )}
 

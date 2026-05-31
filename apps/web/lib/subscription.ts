@@ -3,7 +3,7 @@ import "server-only";
 import { AppError } from "./errors";
 import { supabaseServer } from "./supabase-server";
 
-export type SubscriptionStatus = "trial_active" | "trial_expired" | "active" | "blocked";
+export type SubscriptionStatus = "trial_active" | "trial_expired" | "active" | "blocked" | "past_due";
 export type PlanType = "basic" | "pro";
 
 export interface WorkshopSubscription {
@@ -83,7 +83,7 @@ export async function checkAndUpdateSubscriptionStatus(workshopId: string): Prom
   }
 
   // Terminal states — no recomputation needed.
-  if (current === "active" || current === "blocked") {
+  if (current === "active" || current === "blocked" || current === "past_due") {
     return current;
   }
 
@@ -105,11 +105,39 @@ export async function checkAndUpdateSubscriptionStatus(workshopId: string): Prom
 export async function requireWorkshopAccess(workshopId: string): Promise<void> {
   const status = await checkAndUpdateSubscriptionStatus(workshopId);
 
+  // past_due retains access — Stripe is retrying payment. Only blocked means no access.
   if (status === "blocked") {
     throw new AppError("Workshop subscription required", {
       statusCode: 402,
       parseStatus: "ignored",
     });
+  }
+}
+
+export async function markWorkshopPastDue(workshopId: string): Promise<void> {
+  const { error } = await supabaseServer
+    .from("workshops")
+    .update({ subscription_status: "past_due" })
+    .eq("id", workshopId);
+
+  if (error) {
+    throw new Error(`Failed to mark workshop past_due: ${error.message}`);
+  }
+}
+
+export async function resetWorkshopTrial(workshopId: string): Promise<void> {
+  const { error } = await supabaseServer
+    .from("workshops")
+    .update({
+      trial_started_at: new Date().toISOString(),
+      trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_status: "trial_active",
+      payment_confirmed: false,
+    })
+    .eq("id", workshopId);
+
+  if (error) {
+    throw new Error(`Failed to reset workshop trial: ${error.message}`);
   }
 }
 

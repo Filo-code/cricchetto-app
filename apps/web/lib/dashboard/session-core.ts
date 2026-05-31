@@ -12,6 +12,15 @@ export interface DashboardSessionPayload {
   workshopId: string;
   expiresAt: number;
   sessionVersion: number;
+  /** Set when a platform owner is viewing a different workshop. Never present for normal sessions. */
+  impersonatingWorkshopId?: string;
+  /** Email of the platform owner who started impersonation. */
+  impersonatedBy?: string;
+}
+
+/** Returns the workshop ID to use for data queries. During impersonation, this is the target workshop. */
+export function getEffectiveWorkshopId(session: DashboardSessionPayload): string {
+  return session.impersonatingWorkshopId ?? session.workshopId;
 }
 
 export function verifyDashboardSession(value: string | undefined): DashboardSessionPayload | null {

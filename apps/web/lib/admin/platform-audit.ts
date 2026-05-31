@@ -10,6 +10,9 @@ export type PlatformAuditEventType =
   | "workshop.reactivate"
   | "workshop.free_access_enabled"
   | "workshop.free_access_disabled"
+  | "workshop.impersonate"
+  | "workshop.impersonation_end"
+  | "workshop.trial_reset"
   | "user.reset_link"
   | "demo.reset"
   | "demo.populate";

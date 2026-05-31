@@ -60,4 +60,7 @@ cricchetto-app/
 .worktrees/
 .claude/worktrees/
 
+# Claude Code session memory (local only)
+.remember/
+
 .vercel

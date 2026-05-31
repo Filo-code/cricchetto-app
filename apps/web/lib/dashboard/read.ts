@@ -2,7 +2,7 @@ import { AppError } from "../errors";
 import { reconcileStaleDocuments } from "../documents";
 import { assertValidPlate, normalizePlate } from "../plates";
 import { supabaseServer } from "../supabase-server";
-import { peekDashboardSession } from "./session-core";
+import { peekDashboardSession, getEffectiveWorkshopId } from "./session-core";
 import { mergeByKey } from "./query-utils";
 import { addDays, getLocalDate } from "../time";
 import type { DocumentStatus, WorkOrderStatus } from "../types";
@@ -269,7 +269,7 @@ export interface WorkshopFullSettings {
 export async function getWorkshopSettings(): Promise<WorkshopFullSettings> {
   const session = await peekDashboardSession();
   const configuredWorkshopId = process.env.Cricchetto_DASHBOARD_WORKSHOP_ID ?? process.env.Cricchetto_WORKSHOP_ID;
-  const workshopId = session?.workshopId ?? configuredWorkshopId;
+  const workshopId = session ? getEffectiveWorkshopId(session) : configuredWorkshopId;
 
   if (!workshopId) {
     if (process.env.NODE_ENV === "production") {
@@ -363,9 +363,10 @@ export async function uploadWorkshopLogo(workshopId: string, file: File): Promis
 
 export async function readDashboardWorkshop(): Promise<{ id: string; name: string; timezone: string; logoUrl: string | null; status: string }> {
   // Resolve workshopId: session > env-var. No first-by-date fallback in production.
+  // During impersonation, getEffectiveWorkshopId returns the target workshop.
   const session = await peekDashboardSession();
   const configuredWorkshopId = process.env.Cricchetto_DASHBOARD_WORKSHOP_ID ?? process.env.Cricchetto_WORKSHOP_ID;
-  const workshopId = session?.workshopId ?? configuredWorkshopId;
+  const workshopId = session ? getEffectiveWorkshopId(session) : configuredWorkshopId;
 
   if (!workshopId) {
     if (process.env.NODE_ENV === "production") {

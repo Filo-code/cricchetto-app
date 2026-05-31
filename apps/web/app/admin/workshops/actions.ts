@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requirePlatformOwnerSession } from "../../../lib/admin/platform-auth";
 import { provisionWorkshop, type ProvisionResult } from "../../../lib/admin/provisioning";
 import { setWorkshopStatus, updateWorkshopForAdmin } from "../../../lib/admin/workshops";
@@ -9,6 +10,9 @@ import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
 import { resetPlatformWorkshopData, type DemoResetCounts } from "../../../lib/admin/workshop-reset";
 import { populateDemoWorkshopData, type DemoPopulateCounts } from "../../../lib/admin/workshop-populate";
 import { writePlatformAuditEvent } from "../../../lib/admin/platform-audit";
+import { startImpersonation } from "../../../lib/admin/impersonation";
+import { stopImpersonation } from "../../../lib/admin/stop-impersonation";
+import { resetWorkshopTrial } from "../../../lib/subscription";
 
 export interface CreateWorkshopActionState {
   ok: boolean;
@@ -373,6 +377,73 @@ export async function populateDemoWorkshopAction(
       message: err instanceof Error ? err.message : "Errore durante il popolamento demo.",
       stamp: Date.now(),
     };
+  }
+}
+
+export async function impersonateWorkshopAction(
+  _state: WorkshopStatusActionState,
+  formData: FormData,
+): Promise<WorkshopStatusActionState> {
+  let session;
+  try {
+    session = await requirePlatformOwnerSession();
+  } catch {
+    return { ok: false, message: "Accesso negato.", stamp: Date.now() };
+  }
+  const workshopId = text(formData, "workshopId");
+  if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
+
+  try {
+    await startImpersonation(workshopId, session);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Errore impersonazione.", stamp: Date.now() };
+  }
+  redirect("/dashboard");
+}
+
+export async function stopImpersonationAction(
+  _state: WorkshopStatusActionState,
+  _formData: FormData,
+): Promise<WorkshopStatusActionState> {
+  let session;
+  try {
+    session = await requirePlatformOwnerSession();
+  } catch {
+    return { ok: false, message: "Accesso negato.", stamp: Date.now() };
+  }
+
+  try {
+    await stopImpersonation(session);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Errore.", stamp: Date.now() };
+  }
+  redirect("/admin/workshops");
+}
+
+export async function resetWorkshopTrialAction(
+  _state: WorkshopStatusActionState,
+  formData: FormData,
+): Promise<WorkshopStatusActionState> {
+  let session;
+  try {
+    session = await requirePlatformOwnerSession();
+  } catch {
+    return { ok: false, message: "Accesso negato.", stamp: Date.now() };
+  }
+  const workshopId = text(formData, "workshopId");
+  if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
+
+  try {
+    await resetWorkshopTrial(workshopId);
+    await writePlatformAuditEvent({
+      eventType: "workshop.trial_reset",
+      actorEmail: session.email,
+      targetWorkshopId: workshopId,
+    });
+    revalidatePath("/admin/workshops");
+    return { ok: true, message: "Trial reimpostato (7 giorni).", stamp: Date.now() };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Errore reset trial.", stamp: Date.now() };
   }
 }
 
