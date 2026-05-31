@@ -107,7 +107,7 @@ export async function findWorkshopUserById(id: string): Promise<WorkshopUser | n
 }
 
 // ---------------------------------------------------------------------------
-// User creation (admin-only, no self-signup)
+// User creation
 // ---------------------------------------------------------------------------
 
 export async function createWorkshopUser(input: {
@@ -115,15 +115,20 @@ export async function createWorkshopUser(input: {
   email: string;
   displayName?: string;
   role: "owner" | "staff";
+  passwordHash?: string;
 }): Promise<WorkshopUser> {
+  const row: Record<string, unknown> = {
+    workshop_id: input.workshopId,
+    email: input.email.trim().toLowerCase(),
+    display_name: input.displayName ?? null,
+    role: input.role,
+  };
+  if (input.passwordHash !== undefined) {
+    row.password_hash = input.passwordHash;
+  }
   const { data, error } = await supabaseServer
     .from("workshop_users")
-    .insert({
-      workshop_id: input.workshopId,
-      email: input.email.trim().toLowerCase(),
-      display_name: input.displayName ?? null,
-      role: input.role,
-    })
+    .insert(row)
     .select("id,workshop_id,email,display_name,password_hash,role,is_active,session_version")
     .single();
 

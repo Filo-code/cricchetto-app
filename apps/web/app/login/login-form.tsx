@@ -57,6 +57,13 @@ function LoginFormInner({ showForgotPassword }: { showForgotPassword: boolean })
           </Link>
         </div>
       )}
+
+      <p className="text-center text-xs text-zinc-600">
+        Non hai un account?{" "}
+        <Link href="/register" className="text-zinc-400 transition-colors hover:text-zinc-200">
+          Registrati
+        </Link>
+      </p>
     </form>
   );
 }

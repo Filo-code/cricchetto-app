@@ -123,6 +123,25 @@ export async function authenticateDashboardUser(input: { email: string; password
   });
 }
 
+export async function createSessionForUser(user: import("./users").WorkshopUser): Promise<void> {
+  const payload: DashboardSessionPayload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    workshopId: user.workshopId,
+    expiresAt: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+    sessionVersion: user.sessionVersion,
+  };
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, signPayload(payload), {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS,
+  });
+}
+
 export async function clearDashboardSession(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, "", {

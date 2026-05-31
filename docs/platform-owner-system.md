@@ -159,3 +159,72 @@ All platform owner actions are logged to `platform_audit_events`:
 
 Fields: `event_type`, `actor_email`, `target_workshop_id`, `target_user_id`, `details`, `created_at`.
 Writes are best-effort (never throw) to avoid blocking the action they record.
+
+---
+
+## Self-Service Registration
+
+### Overview
+
+Workshops can self-register at `/register` without platform-owner intervention. Self-registered workshops are identical to platform-provisioned ones and appear automatically in `/admin/workshops`.
+
+### Registration Flow
+
+```
+GET /register
+  → public page, no auth required
+
+POST /register
+  → checkRegistrationRateLimit(ip)     Supabase-backed, 5 attempts/IP/24h
+  → validate input                     server-side only
+  → selfRegisterWorkshop()
+      1. hashPassword()                before any DB write
+      2. INSERT workshops              trial defaults applied by DB
+      3. INSERT workshop_settings
+      4. INSERT workshop_profiles      best-effort, skipped on error
+      5. createWorkshopUser()          with passwordHash — last write
+  → createSessionForUser(user)         direct from returned user, no re-fetch
+  → redirect /dashboard
+```
+
+### Atomicity and Rollback
+
+User creation is always the **last DB write**. On failure at steps 3–5:
+- `DELETE workshops WHERE id = workshopId` (CASCADE removes settings + profiles)
+- No orphan users are possible — user is created last
+
+### Trial Lifecycle
+
+DB defaults from migration 0023 handle trial initialization on INSERT — no application code required:
+
+```
+subscription_status = 'trial_active'
+trial_started_at    = now()
+trial_ends_at       = now() + interval '7 days'
+payment_confirmed   = false
+```
+
+After 7 days without payment: `trial_active → blocked` on next `requireWorkshopAccess` call.
+After Stripe checkout: `trial_active → active`.
+
+### Identity Model
+
+| Aspect | Platform Owner | Workshop Owner |
+|--------|---------------|----------------|
+| Identity source | `CRICCHETTO_PLATFORM_OWNER_EMAILS` env var | `workshop_users` DB row |
+| Session `sub` | `"env"` | UUID (user ID) |
+| Scope | All workshops | Own workshop only |
+| Access to `/admin` | Yes | No |
+| Created by | Manual env config | Self-registration or provisioning |
+
+### Rate Limiting
+
+Implemented via Supabase table `registration_attempts`:
+- **Key**: SHA-256 of IP address (raw IP never stored)
+- **Window**: 24 hours, **Limit**: 5 attempts per IP
+- Attempt recorded **before** the check — prevents bypass by racing the limit
+- No in-memory state: survives serverless restarts and multi-instance deployments
+
+### Admin Compatibility
+
+Self-registered workshops appear in `/admin/workshops` (same `workshops` table, ordered by `created_at DESC`) and can be managed identically: suspend, block, free access, reset trial, impersonate.
