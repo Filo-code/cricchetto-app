@@ -12,7 +12,7 @@ function scryptAsync(password: string, salt: string, keylen: number, options: { 
   );
 }
 
-const SCRYPT_N = 65536;
+const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEY_LEN = 64;
