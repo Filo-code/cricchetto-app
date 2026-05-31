@@ -61,26 +61,24 @@ export async function selfRegisterWorkshop(input: SelfRegisterInput): Promise<Se
     }
   };
 
-  // Step 2: create settings.
-  const { error: settingsError } = await supabaseServer
-    .from("workshop_settings")
-    .insert({ workshop_id: workshopId, hourly_rate: 0 });
+  // Steps 2+3: settings (required) and profile (best-effort) run concurrently.
+  const profileRow: Record<string, unknown> = { workshop_id: workshopId };
+  if (input.phone) profileRow.telefono = input.phone;
+  if (input.vatNumber) profileRow.partita_iva = input.vatNumber;
 
-  if (settingsError) {
-    console.error("[self-register] workshop_settings insert failed:", settingsError.message);
+  const [settingsResult, profileResult] = await Promise.all([
+    supabaseServer.from("workshop_settings").insert({ workshop_id: workshopId, hourly_rate: 0 }),
+    (supabaseServer as any).from("workshop_profiles").insert(profileRow),
+  ]);
+
+  if (settingsResult.error) {
+    console.error("[self-register] workshop_settings insert failed:", settingsResult.error.message);
     await rollback("settings");
     throw new Error(GENERIC_ERROR);
   }
 
-  // Step 3: create profile (best-effort — table may not exist in all envs).
-  const profileRow: Record<string, unknown> = { workshop_id: workshopId };
-  if (input.phone) profileRow.telefono = input.phone;
-  if (input.vatNumber) profileRow.partita_iva = input.vatNumber;
-  const { error: profileError } = await (supabaseServer as any)
-    .from("workshop_profiles")
-    .insert(profileRow);
-  if (profileError) {
-    console.warn("[self-register] workshop_profiles insert skipped:", profileError.message);
+  if (profileResult.error) {
+    console.warn("[self-register] workshop_profiles insert skipped:", profileResult.error.message);
     // No rollback — profile is optional, workshop is usable without it.
   }
 

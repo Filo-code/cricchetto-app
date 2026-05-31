@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { selfRegisterWorkshop } from "../../lib/registration/self-register";
 import { checkRegistrationRateLimit } from "../../lib/registration/rate-limit";
 import { createSessionForUser } from "../../lib/dashboard/session";
+import { extractClientIp } from "../../lib/ip";
 
 export interface RegisterActionState {
   ok: boolean;
@@ -21,8 +22,7 @@ export async function registerWorkshopAction(
 ): Promise<RegisterActionState> {
   // --- Rate limit ---
   const headerStore = await headers();
-  const xff = headerStore.get("x-forwarded-for");
-  const rawIp = xff ? xff.split(",")[0].trim() : (headerStore.get("x-real-ip") ?? "unknown");
+  const rawIp = extractClientIp(headerStore);
 
   try {
     await checkRegistrationRateLimit(rawIp);

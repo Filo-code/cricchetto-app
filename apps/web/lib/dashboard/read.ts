@@ -21,7 +21,9 @@ import type {
   DashboardVehicleDetail,
   DashboardWorkOrderDetail,
   DashboardWorkOrderSummary,
+  SearchSuggestion,
 } from "./types";
+import { rankSuggestions } from "../search/fuzzy-search";
 
 const ACTIVE_STATUSES: WorkOrderStatus[] = ["accepted", "in_progress", "ready"];
 const WORK_ORDER_FILTER_STATUSES: Record<string, WorkOrderStatus[]> = {
@@ -1050,12 +1052,99 @@ export async function readCustomerAndVehicleForEdit(workOrderId: string): Promis
   };
 }
 
-export async function readDashboardSearchSuggestions(query: string): Promise<DashboardSearchVehicle[]> {
+export async function readDashboardSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
   const workshop = await readDashboardWorkshop();
   const clean = query.trim().replace(/\s+/g, " ");
   if (clean.length < 2) return [];
-  const results = await readSearchVehicles(workshop.id, clean);
-  return results.slice(0, 6);
+
+  // Fetch vehicles and active work orders concurrently.
+  const [vehicles, orders] = await Promise.all([
+    readSearchVehicles(workshop.id, clean),
+    readActiveSuggestionOrders(workshop.id, clean),
+  ]);
+
+  // Plates with an active work order — prefer the work_order suggestion for those.
+  const activePlates = new Set(orders.map((o) => o.plate));
+
+  const vehicleSuggestions: SearchSuggestion[] = vehicles
+    .filter((v) => !activePlates.has(v.plate))
+    .map((v) => ({ kind: "vehicle" as const, ...v, score: 0 }));
+
+  const orderSuggestions: SearchSuggestion[] = orders.map((o) => ({
+    kind: "work_order" as const,
+    workOrderId: o.id,
+    publicCode: o.publicCode,
+    plate: o.plate,
+    customerName: o.customerName,
+    status: o.status,
+    score: 0,
+  }));
+
+  const all = [...vehicleSuggestions, ...orderSuggestions];
+
+  const ranked = rankSuggestions(
+    clean,
+    all,
+    (s) => [
+      s.kind === "vehicle" ? s.plate : s.plate,
+      s.kind === "vehicle" ? (s.customerName ?? "") : (s.customerName ?? ""),
+      s.kind === "work_order" ? s.publicCode : "",
+    ],
+  );
+
+  return ranked.slice(0, 8);
+}
+
+interface SuggestionOrder {
+  id: string;
+  publicCode: string;
+  plate: string;
+  customerName: string | null;
+  status: WorkOrderStatus;
+}
+
+async function readActiveSuggestionOrders(workshopId: string, query: string): Promise<SuggestionOrder[]> {
+  const plateQuery = normalizePlate(query).replace(/[%_]/g, "");
+  const nameQuery = query.replace(/[%_]/g, "");
+
+  const byPlate = plateQuery.length >= 2
+    ? supabaseServer
+        .from("work_orders")
+        .select("id,public_code,plate_normalized,customer_name_snapshot,status")
+        .eq("workshop_id", workshopId)
+        .in("status", ACTIVE_STATUSES)
+        .ilike("plate_normalized", `%${plateQuery}%`)
+        .limit(6)
+    : null;
+
+  const byName = nameQuery.length >= 2
+    ? supabaseServer
+        .from("work_orders")
+        .select("id,public_code,plate_normalized,customer_name_snapshot,status")
+        .eq("workshop_id", workshopId)
+        .in("status", ACTIVE_STATUSES)
+        .ilike("customer_name_snapshot", `%${nameQuery}%`)
+        .limit(6)
+    : null;
+
+  const fetches = [byPlate, byName].filter((q): q is NonNullable<typeof q> => q !== null);
+  if (fetches.length === 0) return [];
+
+  const results = await Promise.all(fetches.map((q) => q));
+  const rowsById = new Map<string, SuggestionOrder>();
+  for (const { data } of results) {
+    for (const row of (data ?? []) as any[]) {
+      rowsById.set(row.id, {
+        id: row.id,
+        publicCode: row.public_code,
+        plate: row.plate_normalized,
+        customerName: row.customer_name_snapshot ?? null,
+        status: row.status as WorkOrderStatus,
+      });
+    }
+  }
+
+  return [...rowsById.values()].slice(0, 8);
 }
 
 async function readTodayCounts(workshopId: string, timezone: string): Promise<DashboardTodayCounts> {

@@ -3,6 +3,7 @@ import { isPlatformSession } from "../../../../../lib/admin/platform-session";
 import { readDashboardSearchSuggestions, readDashboardWorkshop } from "../../../../../lib/dashboard/read";
 import { COOKIE_NAME, verifyDashboardSession } from "../../../../../lib/dashboard/session-core";
 import { AppError, getErrorMessage } from "../../../../../lib/errors";
+import type { SearchSuggestion } from "../../../../../lib/dashboard/types";
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -28,7 +29,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const url = new URL(request.url);
     const q = url.searchParams.get("q") ?? "";
-    const data = await readDashboardSearchSuggestions(q);
+    const data: SearchSuggestion[] = await readDashboardSearchSuggestions(q);
     return Response.json({ ok: true, data });
   } catch (error) {
     const status = error instanceof AppError ? error.statusCode : 500;

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { authenticateDashboardUser, clearDashboardSession, peekDashboardSession } from "../../lib/dashboard/session";
 import { isPlatformSession } from "../../lib/admin/platform-session";
+import { extractClientIp } from "../../lib/ip";
 
 // In-memory rate limiter: 10 failed attempts per IP per 15 minutes.
 // NOTE: resets per serverless instance — use Redis/Upstash for multi-instance deployments.
@@ -12,9 +13,7 @@ const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
 function getRateLimitKey(headerStore: Awaited<ReturnType<typeof headers>>): string {
-  const xff = headerStore.get("x-forwarded-for");
-  const ip = xff ? xff.split(",")[0].trim() : (headerStore.get("x-real-ip") ?? "unknown");
-  return ip;
+  return extractClientIp(headerStore);
 }
 
 function checkLoginRateLimit(key: string): void {

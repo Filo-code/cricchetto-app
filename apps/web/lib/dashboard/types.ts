@@ -185,3 +185,24 @@ export interface DashboardSearchResult {
   activeWorkOrders: DashboardWorkOrderSummary[];
   historyWorkOrders: DashboardWorkOrderSummary[];
 }
+
+export type SearchSuggestion =
+  | {
+      kind: "vehicle";
+      vehicleId: string;
+      plate: string;
+      customerName: string | null;
+      model: string | null;
+      activeWorkOrderId: string | null;
+      activeWorkOrderStatus: WorkOrderStatus | null;
+      score: number;
+    }
+  | {
+      kind: "work_order";
+      workOrderId: string;
+      publicCode: string;
+      plate: string;
+      customerName: string | null;
+      status: WorkOrderStatus;
+      score: number;
+    };

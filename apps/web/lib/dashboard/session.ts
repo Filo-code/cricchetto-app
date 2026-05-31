@@ -27,11 +27,15 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
     redirect("/login");
   }
 
-  // Verify the workshop still exists and check its status
-  let workshop: Awaited<ReturnType<typeof readDashboardWorkshop>>;
-  try {
-    workshop = await readDashboardWorkshop();
-  } catch {
+  // Workshop lookup and user lookup are independent — run concurrently.
+  const workshopFetch = readDashboardWorkshop().catch(() => null);
+  const userFetch = session.sub !== "env"
+    ? findWorkshopUserById(session.sub).catch(() => null)
+    : Promise.resolve(null);
+
+  const [workshop, dbUser] = await Promise.all([workshopFetch, userFetch]);
+
+  if (!workshop) {
     redirect("/login");
   }
 
@@ -55,7 +59,6 @@ export async function requireDashboardSession(): Promise<DashboardSessionPayload
   // Validate session_version against DB to invalidate sessions after password change.
   // Skip for legacy env-var sessions (sub="env") which have no workshop_users row.
   if (session.sub !== "env") {
-    const dbUser = await findWorkshopUserById(session.sub);
     if (!dbUser || !dbUser.isActive || dbUser.sessionVersion !== session.sessionVersion) {
       redirect("/login");
     }
