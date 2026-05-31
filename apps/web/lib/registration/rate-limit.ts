@@ -11,14 +11,32 @@ function hashIp(rawIp: string): string {
 }
 
 /**
- * Checks the registration rate limit for the given IP and records the attempt.
- * Always records the attempt (including blocked ones) to prevent bypass.
- * Throws if the limit has been reached.
+ * Records a registration attempt and enforces the rate limit.
+ *
+ * Order of operations (race-condition-safe):
+ *   1. INSERT the attempt row first (always recorded, including blocked ones)
+ *   2. COUNT attempts in window (including the one just inserted)
+ *   3. If count > MAX or count query fails → throw (fail closed)
+ *
+ * Inserting before counting means concurrent requests both record and
+ * both count each other's rows — no bypass via parallel racing.
  */
 export async function checkRegistrationRateLimit(rawIp: string): Promise<void> {
   const ipHash = hashIp(rawIp);
   const windowStart = new Date(Date.now() - WINDOW_MS).toISOString();
 
+  // Step 1: record attempt unconditionally (blocked attempts are also recorded).
+  const { error: insertError } = await (supabaseServer as any)
+    .from("registration_attempts")
+    .insert({ ip_hash: ipHash });
+
+  if (insertError) {
+    console.error("[registration-rate-limit] insert failed:", insertError.message);
+    // Fail closed: if we can't record the attempt, deny registration.
+    throw new Error("Servizio temporaneamente non disponibile. Riprova tra qualche minuto.");
+  }
+
+  // Step 2: count all attempts in the 24h window (includes the row just inserted).
   const { count, error: countError } = await (supabaseServer as any)
     .from("registration_attempts")
     .select("id", { count: "exact", head: true })
@@ -26,19 +44,13 @@ export async function checkRegistrationRateLimit(rawIp: string): Promise<void> {
     .gte("attempted_at", windowStart);
 
   if (countError) {
-    console.warn("[registration-rate-limit] count query failed:", countError.message);
+    // Fail closed: can't verify limit → deny.
+    console.error("[registration-rate-limit] count query failed:", countError.message);
+    throw new Error("Servizio temporaneamente non disponibile. Riprova tra qualche minuto.");
   }
 
-  // Record the attempt before checking — prevents bypass by racing past the limit check.
-  const { error: insertError } = await (supabaseServer as any)
-    .from("registration_attempts")
-    .insert({ ip_hash: ipHash });
-
-  if (insertError) {
-    console.warn("[registration-rate-limit] insert failed:", insertError.message);
-  }
-
-  if ((count ?? 0) >= MAX_ATTEMPTS) {
+  // Step 3: enforce limit. Count includes current attempt, so > MAX blocks the (MAX+1)th.
+  if ((count ?? 0) > MAX_ATTEMPTS) {
     throw new Error("Troppi tentativi di registrazione. Riprova tra 24 ore.");
   }
 }

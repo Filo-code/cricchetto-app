@@ -17,23 +17,27 @@ export interface SelfRegisterResult {
   user: WorkshopUser;
 }
 
+const GENERIC_ERROR = "Errore durante la registrazione. Riprova.";
+const EMAIL_DUPLICATE_ERROR = "Email già registrata.";
+
 /**
  * Creates a new workshop with owner user via self-service registration.
  *
- * Order of writes (safe rollback sequence):
- *   1. hashPassword — before any DB write
- *   2. INSERT workshops
- *   3. INSERT workshop_settings
- *   4. INSERT workshop_profiles (best-effort)
- *   5. createWorkshopUser with passwordHash — last write
+ * Write order (safe rollback sequence, no orphan users possible):
+ *   1. hashPassword()                — before any DB write
+ *   2. INSERT workshops              — trial defaults applied by DB (migration 0023)
+ *   3. INSERT workshop_settings      — on failure: rollback (DELETE workshop CASCADE)
+ *   4. INSERT workshop_profiles      — best-effort, skip on error, no rollback
+ *   5. createWorkshopUser()          — with passwordHash, last write; on failure: rollback
  *
- * On failure at steps 3-5: DELETE workshop (CASCADE removes settings + profiles).
- * User is always the last write, so no orphan users are possible.
+ * Error messages: only known user-facing strings propagate. Internal DB messages
+ * are swallowed and replaced with GENERIC_ERROR to prevent information leakage.
  */
 export async function selfRegisterWorkshop(input: SelfRegisterInput): Promise<SelfRegisterResult> {
+  // Hash password before touching DB — never a NULL hash on the registration path.
   const passwordHash = await hashPassword(input.password);
 
-  // Step 1: create workshop
+  // Step 1: create workshop.
   const { data: workshopData, error: workshopError } = await supabaseServer
     .from("workshops")
     .insert({ name: input.workshopName.trim(), timezone: "Europe/Rome" })
@@ -41,37 +45,46 @@ export async function selfRegisterWorkshop(input: SelfRegisterInput): Promise<Se
     .single();
 
   if (workshopError || !workshopData) {
-    throw new Error(`Errore durante la creazione dell'officina: ${workshopError?.message ?? "unknown"}`);
+    console.error("[self-register] workshops insert failed:", workshopError?.message);
+    throw new Error(GENERIC_ERROR);
   }
 
   const workshopId = workshopData.id as string;
 
-  const rollback = async () => {
-    await supabaseServer.from("workshops").delete().eq("id", workshopId);
+  const rollback = async (step: string) => {
+    const { error: rbError } = await supabaseServer
+      .from("workshops")
+      .delete()
+      .eq("id", workshopId);
+    if (rbError) {
+      console.error(`[self-register] rollback after ${step} failed — orphan workshopId=${workshopId}:`, rbError.message);
+    }
   };
 
-  // Step 2: create settings
+  // Step 2: create settings.
   const { error: settingsError } = await supabaseServer
     .from("workshop_settings")
     .insert({ workshop_id: workshopId, hourly_rate: 0 });
 
   if (settingsError) {
-    await rollback();
-    throw new Error(`Errore durante la configurazione: ${settingsError.message}`);
+    console.error("[self-register] workshop_settings insert failed:", settingsError.message);
+    await rollback("settings");
+    throw new Error(GENERIC_ERROR);
   }
 
-  // Step 3: create profile (best-effort — skip if table not ready)
+  // Step 3: create profile (best-effort — table may not exist in all envs).
   const profileRow: Record<string, unknown> = { workshop_id: workshopId };
-  if (input.phone?.trim()) profileRow.telefono = input.phone.trim();
-  if (input.vatNumber?.trim()) profileRow.partita_iva = input.vatNumber.trim();
+  if (input.phone) profileRow.telefono = input.phone;
+  if (input.vatNumber) profileRow.partita_iva = input.vatNumber;
   const { error: profileError } = await (supabaseServer as any)
     .from("workshop_profiles")
     .insert(profileRow);
   if (profileError) {
     console.warn("[self-register] workshop_profiles insert skipped:", profileError.message);
+    // No rollback — profile is optional, workshop is usable without it.
   }
 
-  // Step 4: create owner user with password hash — last write
+  // Step 4: create owner user with password hash — always the last write.
   let user: WorkshopUser;
   try {
     user = await createWorkshopUser({
@@ -82,9 +95,15 @@ export async function selfRegisterWorkshop(input: SelfRegisterInput): Promise<Se
       passwordHash,
     });
   } catch (err) {
-    await rollback();
-    throw err;
+    await rollback("user creation");
+    const msg = err instanceof Error ? err.message : "";
+    // Pass through only the known user-facing duplicate email message.
+    if (msg === EMAIL_DUPLICATE_ERROR) throw err;
+    console.error("[self-register] createWorkshopUser failed:", msg);
+    throw new Error(GENERIC_ERROR);
   }
+
+  console.log(`[self-register] registered workshopId=${workshopId} userId=${user.id}`);
 
   return { workshopId, user };
 }

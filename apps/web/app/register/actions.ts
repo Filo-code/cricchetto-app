@@ -12,10 +12,14 @@ export interface RegisterActionState {
   stamp?: number;
 }
 
+// Matches user@domain.tld — rejects bare @, no TLD, or whitespace in local/domain parts.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 export async function registerWorkshopAction(
   _state: RegisterActionState,
   formData: FormData,
 ): Promise<RegisterActionState> {
+  // --- Rate limit ---
   const headerStore = await headers();
   const xff = headerStore.get("x-forwarded-for");
   const rawIp = xff ? xff.split(",")[0].trim() : (headerStore.get("x-real-ip") ?? "unknown");
@@ -26,47 +30,88 @@ export async function registerWorkshopAction(
     return { ok: false, message: err instanceof Error ? err.message : "Troppi tentativi.", stamp: Date.now() };
   }
 
+  // --- Extract + normalize ---
   const workshopName = str(formData, "workshopName");
-  const ownerName = str(formData, "ownerName");
-  const email = str(formData, "email").toLowerCase();
-  const password = str(formData, "password");
-  const confirmPassword = str(formData, "confirmPassword");
-  const phone = str(formData, "phone") || undefined;
-  const vatNumber = str(formData, "vatNumber") || undefined;
+  const ownerName    = str(formData, "ownerName");
+  const email        = str(formData, "email").toLowerCase();
+  const password     = strRaw(formData, "password");
+  const confirmPw    = strRaw(formData, "confirmPassword");
+  const phone        = str(formData, "phone") || undefined;
+  const vatNumber    = str(formData, "vatNumber") || undefined;
 
-  if (!workshopName || workshopName.length > 100) {
-    return { ok: false, message: "Nome officina obbligatorio (max 100 caratteri).", stamp: Date.now() };
+  // --- Validate ---
+  if (!workshopName) {
+    return err("Nome officina obbligatorio.");
   }
-  if (!ownerName || ownerName.length > 100) {
-    return { ok: false, message: "Nome titolare obbligatorio (max 100 caratteri).", stamp: Date.now() };
+  if (workshopName.length > 100) {
+    return err("Nome officina troppo lungo (max 100 caratteri).");
   }
-  if (!email || !email.includes("@") || !email.includes(".")) {
-    return { ok: false, message: "Email non valida.", stamp: Date.now() };
+  if (!ownerName) {
+    return err("Nome titolare obbligatorio.");
+  }
+  if (ownerName.length > 100) {
+    return err("Nome titolare troppo lungo (max 100 caratteri).");
+  }
+  if (!email || !EMAIL_RE.test(email)) {
+    return err("Email non valida.");
+  }
+  if (email.length > 254) {
+    return err("Email troppo lunga.");
   }
   if (!password || password.length < 8) {
-    return { ok: false, message: "La password deve contenere almeno 8 caratteri.", stamp: Date.now() };
+    return err("La password deve contenere almeno 8 caratteri.");
   }
-  if (password !== confirmPassword) {
-    return { ok: false, message: "Le password non coincidono.", stamp: Date.now() };
+  if (!password.trim()) {
+    return err("La password non può essere composta solo da spazi.");
+  }
+  if (password !== confirmPw) {
+    return err("Le password non coincidono.");
+  }
+  if (phone && phone.length > 30) {
+    return err("Numero di telefono troppo lungo.");
+  }
+  if (vatNumber && vatNumber.length > 30) {
+    return err("Partita IVA troppo lunga.");
   }
 
+  // --- Register ---
   let user;
   try {
-    const result = await selfRegisterWorkshop({ workshopName, ownerName, email, password, phone, vatNumber });
+    const result = await selfRegisterWorkshop({
+      workshopName,
+      ownerName,
+      email,
+      password,
+      phone,
+      vatNumber,
+    });
     user = result.user;
-  } catch (err) {
+  } catch (e) {
     return {
       ok: false,
-      message: err instanceof Error ? err.message : "Errore durante la registrazione. Riprova.",
+      message: e instanceof Error ? e.message : "Errore durante la registrazione. Riprova.",
       stamp: Date.now(),
     };
   }
 
+  // createSessionForUser uses the returned WorkshopUser directly — no DB re-fetch,
+  // no sessionVersion race condition.
   await createSessionForUser(user);
   redirect("/dashboard");
 }
 
+// str: trim whitespace. Used for all fields except password.
 function str(formData: FormData, key: string): string {
   const val = formData.get(key);
   return typeof val === "string" ? val.trim() : "";
+}
+
+// strRaw: no trim. Used for password fields (spaces may be intentional).
+function strRaw(formData: FormData, key: string): string {
+  const val = formData.get(key);
+  return typeof val === "string" ? val : "";
+}
+
+function err(message: string): RegisterActionState {
+  return { ok: false, message, stamp: Date.now() };
 }
