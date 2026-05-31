@@ -12,7 +12,7 @@ import { WorkOrderDetailPanel } from "../../../../components/dashboard/work-orde
 import { WorkOrderActions } from "../../../../components/dashboard/work-order-actions";
 import { dashboardGet } from "../../../../lib/dashboard/api-client";
 import { peekDashboardSession } from "../../../../lib/dashboard/session-core";
-import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-owner-emails";
+import { isPlatformOwnerEmail } from "../../../../lib/admin/platform-auth";
 import type { DashboardWorkOrderDetail } from "../../../../lib/dashboard/types";
 import type { DashboardMessageLog, DashboardCustomerVehicleData } from "../../../../lib/dashboard/read";
 

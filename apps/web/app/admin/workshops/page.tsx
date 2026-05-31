@@ -4,7 +4,7 @@ import { CreateWorkshopForm } from "../../../components/dashboard/create-worksho
 import { WorkshopListTable } from "../../../components/dashboard/workshop-list-table";
 import { listWorkshopsForAdmin } from "../../../lib/admin/workshops";
 import { requirePlatformOwnerSession } from "../../../lib/admin/platform-auth";
-import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
+import { getPlatformWorkshopId } from "../../../lib/admin/platform-auth";
 import { listPlatformAuditEvents, type PlatformAuditEvent } from "../../../lib/admin/platform-audit";
 import { PlatformAuditLog } from "../../../components/dashboard/platform-audit-log";
 

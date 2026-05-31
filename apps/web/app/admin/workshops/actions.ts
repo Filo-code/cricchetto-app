@@ -6,12 +6,12 @@ import { requirePlatformOwnerSession } from "../../../lib/admin/platform-auth";
 import { provisionWorkshop, type ProvisionResult } from "../../../lib/admin/provisioning";
 import { setWorkshopStatus, updateWorkshopForAdmin } from "../../../lib/admin/workshops";
 import { generatePasswordResetToken } from "../../../lib/dashboard/users";
-import { getPlatformWorkshopId } from "../../../lib/admin/platform-workshop";
+import { getPlatformWorkshopId } from "../../../lib/admin/platform-auth";
 import { resetPlatformWorkshopData, type DemoResetCounts } from "../../../lib/admin/workshop-reset";
 import { populateDemoWorkshopData, type DemoPopulateCounts } from "../../../lib/admin/workshop-populate";
 import { writePlatformAuditEvent } from "../../../lib/admin/platform-audit";
 import { startImpersonation } from "../../../lib/admin/impersonation";
-import { stopImpersonation } from "../../../lib/admin/stop-impersonation";
+import { stopImpersonation } from "../../../lib/admin/impersonation";
 import { resetWorkshopTrial } from "../../../lib/subscription";
 
 export interface CreateWorkshopActionState {
@@ -434,7 +434,7 @@ export async function resetWorkshopTrialAction(
   if (!workshopId) return { ok: false, message: "ID officina mancante.", stamp: Date.now() };
 
   try {
-    await resetWorkshopTrial(workshopId);
+    await resetWorkshopTrial(workshopId, session.email);
     await writePlatformAuditEvent({
       eventType: "workshop.trial_reset",
       actorEmail: session.email,

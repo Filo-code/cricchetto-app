@@ -1,24 +1,8 @@
 import Stripe from "stripe";
 import { cookies } from "next/headers";
-import { verifyDashboardSession, COOKIE_NAME } from "../../../../lib/dashboard/session-core";
-import { getEffectiveWorkshopId } from "../../../../lib/dashboard/session-core";
+import { verifyDashboardSession, COOKIE_NAME, getEffectiveWorkshopId } from "../../../../lib/dashboard/session-core";
 import { getStripePriceId, PLAN_PRICES } from "../../../../lib/plan";
 import type { PlanType } from "../../../../lib/subscription";
-
-function getBaseUrl(request: Request): string {
-  const configured = process.env.Cricchetto_BACKEND_BASE_URL?.replace(/\/$/, "");
-  if (configured) return configured;
-  const url = new URL(request.url);
-  return `${url.protocol}//${url.host}`;
-}
-
-function createStripe(): Stripe {
-  const key = process.env.Cricchetto_STRIPE_SECRET_KEY;
-  if (!key || key === "REPLACE_ME") {
-    throw new Error("Cricchetto_STRIPE_SECRET_KEY not configured.");
-  }
-  return new Stripe(key);
-}
 
 export async function POST(request: Request): Promise<Response> {
   const cookieStore = await cookies();
@@ -39,8 +23,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: "Piano non valido. Usa 'basic' o 'pro'." }, { status: 400 });
   }
 
-  const workshopId = getEffectiveWorkshopId(session);
-  const baseUrl = getBaseUrl(request);
+  const stripeKey = process.env.Cricchetto_STRIPE_SECRET_KEY;
+  if (!stripeKey || stripeKey === "REPLACE_ME") {
+    return Response.json({ ok: false, error: "Configurazione pagamento non completata." }, { status: 503 });
+  }
 
   let priceId: string;
   try {
@@ -50,22 +36,18 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: "Configurazione pagamento non completata." }, { status: 503 });
   }
 
-  let stripe: Stripe;
-  try {
-    stripe = createStripe();
-  } catch (err) {
-    console.error("[create-checkout] Stripe init failed:", err instanceof Error ? err.message : err);
-    return Response.json({ ok: false, error: "Configurazione pagamento non completata." }, { status: 503 });
-  }
+  const workshopId = getEffectiveWorkshopId(session);
+  const baseUrl = process.env.Cricchetto_BACKEND_BASE_URL?.replace(/\/$/, "") ?? new URL(request.url).origin;
 
   try {
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSession = await new Stripe(stripeKey).checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       customer_email: session.email,
       metadata: {
         workshop_id: workshopId,
         plan_type: planType,
+        stripe_price_id: priceId,
       },
       subscription_data: {
         metadata: { workshop_id: workshopId },

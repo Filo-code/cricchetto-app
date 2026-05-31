@@ -2,7 +2,7 @@ import "server-only";
 
 import { LayoutGrid } from "lucide-react";
 import { peekDashboardSession } from "../../lib/dashboard/session-core";
-import { isPlatformSession } from "../../lib/admin/platform-session";
+import { isPlatformSession } from "../../lib/admin/platform-auth";
 import { ButtonLink } from "../ui/button";
 
 export async function PlatformConsoleNavLink() {

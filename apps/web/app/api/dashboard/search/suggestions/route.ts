@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { isPlatformSession } from "../../../../../lib/admin/platform-session";
+import { isPlatformSession } from "../../../../../lib/admin/platform-auth";
 import { readDashboardSearchSuggestions, readDashboardWorkshop } from "../../../../../lib/dashboard/read";
 import { COOKIE_NAME, verifyDashboardSession } from "../../../../../lib/dashboard/session-core";
 import { AppError, getErrorMessage } from "../../../../../lib/errors";

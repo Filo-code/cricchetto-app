@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { authenticateDashboardUser, clearDashboardSession, peekDashboardSession } from "../../lib/dashboard/session";
-import { isPlatformSession } from "../../lib/admin/platform-session";
+import { isPlatformSession } from "../../lib/admin/platform-auth";
 import { extractClientIp } from "../../lib/ip";
 
 // In-memory rate limiter: 10 failed attempts per IP per 15 minutes.

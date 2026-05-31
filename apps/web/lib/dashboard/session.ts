@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { timingSafeEqualString } from "../crypto";
-import { isPlatformSession } from "../admin/platform-session";
+import { isPlatformSession } from "../admin/platform-auth";
 import { readDashboardWorkshop } from "./read";
 import { findWorkshopUserByEmail, findWorkshopUserById, verifyPassword } from "./users";
 import { requireWorkshopAccess } from "../subscription";

@@ -203,6 +203,7 @@ export type SearchSuggestion =
       publicCode: string;
       plate: string;
       customerName: string | null;
+      vehicleModel: string | null;
       status: WorkOrderStatus;
       score: number;
     };

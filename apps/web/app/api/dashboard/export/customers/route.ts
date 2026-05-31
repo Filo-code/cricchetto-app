@@ -1,4 +1,4 @@
-import { isPlatformSession } from "../../../../../lib/admin/platform-session";
+import { isPlatformSession } from "../../../../../lib/admin/platform-auth";
 import { csvHeader, csvRow, todayIso } from "../../../../../lib/dashboard/export-helpers";
 import { verifyDashboardSessionForApi } from "../../../../../lib/dashboard/session-api";
 import { AppError, getErrorMessage } from "../../../../../lib/errors";

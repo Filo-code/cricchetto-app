@@ -1,6 +1,27 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { requireDashboardSession } from "../../../lib/dashboard/session";
+import { getWorkshopSubscription } from "../../../lib/subscription";
+import { getEffectiveWorkshopId } from "../../../lib/dashboard/session-core";
 
-export default function SubscribeSuccessPage() {
+// Reads subscription status from DB only — no Stripe calls.
+// If webhook already processed: status = "active" → redirect to dashboard.
+// If webhook not yet processed: show pending state (webhook typically arrives within seconds).
+export default async function SubscribeSuccessPage() {
+  let session;
+  try {
+    session = await requireDashboardSession();
+  } catch {
+    redirect("/login");
+  }
+
+  const workshopId = getEffectiveWorkshopId(session);
+  const sub = await getWorkshopSubscription(workshopId);
+
+  if (sub.subscriptionStatus === "active") {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#07080a] px-4">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -12,12 +33,12 @@ export default function SubscribeSuccessPage() {
 
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-10">
           <div className="mb-4 text-4xl">✓</div>
-          <h1 className="text-xl font-semibold text-zinc-100">Abbonamento attivato</h1>
+          <h1 className="text-xl font-semibold text-zinc-100">Pagamento ricevuto</h1>
           <p className="mt-3 text-sm text-zinc-400">
-            Il tuo pagamento è andato a buon fine. L&apos;account è ora attivo.
+            Attivazione abbonamento in corso. Solitamente richiede meno di 10 secondi.
           </p>
           <p className="mt-2 text-xs text-zinc-600">
-            Riceverai una conferma via email da Stripe. L&apos;attivazione è immediata.
+            Riceverai una conferma via email da Stripe.
           </p>
 
           <Link
@@ -28,6 +49,7 @@ export default function SubscribeSuccessPage() {
           </Link>
         </div>
       </div>
+
     </div>
   );
 }

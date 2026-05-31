@@ -13,6 +13,7 @@ export type PlatformAuditEventType =
   | "workshop.impersonate"
   | "workshop.impersonation_end"
   | "workshop.trial_reset"
+  | "workshop.subscription_force_transition"
   | "user.reset_link"
   | "demo.reset"
   | "demo.populate";

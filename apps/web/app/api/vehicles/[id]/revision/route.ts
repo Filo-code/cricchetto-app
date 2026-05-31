@@ -1,6 +1,6 @@
 import { requireDashboardRequest } from "../../../../../lib/dashboard/auth";
 import { readVehicleForMutation } from "../../../../../lib/dashboard/read";
-import { isPlatformSession } from "../../../../../lib/admin/platform-session";
+import { isPlatformSession } from "../../../../../lib/admin/platform-auth";
 import { AppError, getErrorMessage } from "../../../../../lib/errors";
 import { updateRevisionDueDate } from "../../../../../lib/revisions";
 import { assertIsoDate, assertIsoTime } from "../../../../../lib/time";
