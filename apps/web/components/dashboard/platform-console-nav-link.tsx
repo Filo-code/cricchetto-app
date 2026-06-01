@@ -7,7 +7,7 @@ import { ButtonLink } from "../ui/button";
 
 export async function PlatformConsoleNavLink() {
   const session = await peekDashboardSession();
-  if (!session || !isPlatformSession(session)) return null;
+  if (!session || !isPlatformSession(session) || session.impersonatingWorkshopId) return null;
   return (
     <ButtonLink href="/admin/workshops" aria-label="Console Filò — gestione officine" className="shrink-0">
       <LayoutGrid className="h-4 w-4" />
