@@ -45,6 +45,17 @@ export function WorkOrderActions({ workOrderId, status }: { workOrderId: string;
           }}
         >
           <input type="hidden" name="workOrderId" value={workOrderId} />
+          {canClose && (
+            <label className="mb-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-zinc-200">
+              <span>Notifica cliente (WhatsApp)</span>
+              <input
+                name="notifyCustomer"
+                type="checkbox"
+                defaultChecked
+                className="h-4 w-4 rounded border-white/20 bg-transparent text-accent focus:ring-accent/40"
+              />
+            </label>
+          )}
           <FormSubmitButton
             label="Chiudi: pronta per il ritiro"
             pendingLabel="Chiusura scheda..."

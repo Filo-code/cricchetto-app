@@ -256,6 +256,7 @@ export async function closeWorkOrder(input: {
   actorRef: string;
   mechanicIdentifier?: string;
   actorType?: WorkOrderActorType;
+  notifyCustomer?: boolean;
 }): Promise<CommandExecutionResult> {
   const workOrder = await requireMutableWorkOrder(input.workshopId, input.plate);
   assertTransitionAllowed(workOrder.status, "ready", input.plate);
@@ -288,10 +289,10 @@ export async function closeWorkOrder(input: {
         type: "schedule_reminder",
         payload: { workOrderId: workOrder.id, readyAt, readyReminderDays: Number(settings.ready_reminder_days), recipientPolicy: settings.ready_reminder_recipient_policy as RecipientPolicy, mechanicIdentifier: input.mechanicIdentifier, customerIdentifier: customerPhone },
       },
-      {
-        type: "schedule_pickup_notification",
+      ...(input.notifyCustomer !== false ? [{
+        type: "schedule_pickup_notification" as const,
         payload: { workOrderId: workOrder.id, readyAt, customerIdentifier: customerPhone, customerName: workOrder.customer_name_snapshot ?? null, plate: workOrder.plate_normalized, workshopDisplayName },
-      },
+      }] : []),
     ],
   };
 }

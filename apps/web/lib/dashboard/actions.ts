@@ -57,8 +57,9 @@ export async function createWorkOrderAction(_state: DashboardActionState, formDa
 
 export async function closeWorkOrderAction(_state: DashboardActionState, formData: FormData): Promise<DashboardActionState> {
   const id = textValue(formData, "workOrderId");
+  const notifyCustomer = formData.get("notifyCustomer") === "on";
   try {
-    await dashboardPost(`/api/work-orders/${encodeURIComponent(id)}/actions/close`, { actorRef: "dashboard" });
+    await dashboardPost(`/api/work-orders/${encodeURIComponent(id)}/actions/close`, { actorRef: "dashboard", notifyCustomer });
     revalidateWorkOrderPaths(id);
     return successState("Scheda chiusa: il veicolo e pronto per il ritiro.");
   } catch (error) {

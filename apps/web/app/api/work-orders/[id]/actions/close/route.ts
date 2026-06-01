@@ -15,6 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       actorRef: body.actorRef ?? "dashboard",
       mechanicIdentifier: body.mechanicIdentifier,
       actorType: "dashboard_user",
+      notifyCustomer: body.notifyCustomer !== false,
     });
     return Response.json({ ok: true, data: result });
   } catch (error) {
