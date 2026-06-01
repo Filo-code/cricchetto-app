@@ -1,5 +1,7 @@
 import { requireDashboardSession } from "../../lib/dashboard/session";
+import { getEffectiveWorkshopId } from "../../lib/dashboard/session-core";
 import { ImpersonationBanner } from "../../components/dashboard/impersonation-banner";
+import { TrialBanner } from "../../components/dashboard/trial-banner";
 import { supabaseServer } from "../../lib/supabase-server";
 
 async function resolveWorkshopName(workshopId: string): Promise<string> {
@@ -25,9 +27,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     );
   }
 
+  const workshopId = getEffectiveWorkshopId(session);
+
   return (
     <>
       {impersonationBanner}
+      <TrialBanner workshopId={workshopId} />
       {children}
     </>
   );
