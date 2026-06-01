@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const workshopId = getEffectiveWorkshopId(session);
-  const baseUrl = process.env.Cricchetto_BACKEND_BASE_URL?.replace(/\/$/, "") ?? new URL(request.url).origin;
+  const baseUrl = new URL(request.url).origin;
 
   try {
     const checkoutSession = await new Stripe(stripeKey).checkout.sessions.create({
