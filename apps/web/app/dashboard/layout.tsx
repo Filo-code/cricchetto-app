@@ -1,5 +1,6 @@
 import { requireDashboardSession } from "../../lib/dashboard/session";
 import { getEffectiveWorkshopId } from "../../lib/dashboard/session-core";
+import { isPlatformSession } from "../../lib/admin/platform-auth";
 import { ImpersonationBanner } from "../../components/dashboard/impersonation-banner";
 import { TrialBanner } from "../../components/dashboard/trial-banner";
 import { supabaseServer } from "../../lib/supabase-server";
@@ -32,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <>
       {impersonationBanner}
-      <TrialBanner workshopId={workshopId} />
+      {!isPlatformSession(session) && <TrialBanner workshopId={workshopId} />}
       {children}
     </>
   );
